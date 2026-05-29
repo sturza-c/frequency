@@ -177,50 +177,49 @@ export default function Lobby({
               initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, delay: 0.52, ease }}
-              className="mt-8 flex flex-wrap items-end gap-6"
+              className="mt-10 w-full max-w-sm"
             >
               {account ? (
-                <div>
-                  <span className="text-[11px] uppercase tracking-[0.2em] text-gray-500">
-                    Welcome back
+                <div className="flex items-center gap-4 rounded-2xl border border-white/[0.08] bg-white/[0.03] px-5 py-4">
+                  <span
+                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-bold"
+                    style={{ backgroundColor: featured.accent, color: '#101010' }}
+                  >
+                    {account.name.slice(0, 2).toUpperCase()}
                   </span>
-                  <p className="mt-1 text-xl" style={{ color: '#E1E0CC' }}>
-                    {account.name} 👋
-                  </p>
+                  <div>
+                    <span className="text-[10px] uppercase tracking-[0.2em] text-gray-500">Welcome back</span>
+                    <p className="text-base font-medium" style={{ color: '#E1E0CC' }}>{account.name}</p>
+                  </div>
+                  <span className="ml-auto text-[11px] text-gray-500">↓ pick a room</span>
                 </div>
               ) : (
                 <div>
-                  <label className="text-[11px] uppercase tracking-[0.2em]"
-                    style={{ color: nameError ? '#f87171' : 'rgb(107 114 128)' }}>
-                    {nameError ? '↓ Enter a name to join' : 'Your name'}
-                  </label>
-                  <motion.input
-                    ref={inputRef}
-                    value={name}
-                    onChange={(e) => { setName(e.target.value); setNameError(false) }}
-                    maxLength={24}
-                    placeholder="e.g. nightowl"
-                    animate={shake ? { x: [0, -6, 6, -4, 4, 0] } : {}}
-                    transition={{ duration: 0.4 }}
-                    className="mt-2 block w-56 rounded-full bg-white/5 px-5 py-3 text-primary placeholder:text-gray-600 focus:outline-none focus:ring-1"
-                    style={{
-                      outline: 'none',
-                      boxShadow: nameError ? '0 0 0 1px #f87171' : undefined,
-                    }}
-                  />
-                  {nameError && (
-                    <p className="mt-1.5 text-[11px] text-red-400">
-                      Pick a name, then choose a room.
-                    </p>
-                  )}
+                  <p className="mb-2 text-sm" style={{ color: '#E1E0CC' }}>
+                    First, what should we call you?
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <motion.input
+                      ref={inputRef}
+                      value={name}
+                      onChange={(e) => { setName(e.target.value); setNameError(false) }}
+                      maxLength={24}
+                      placeholder="your name or alias…"
+                      animate={shake ? { x: [0, -6, 6, -4, 4, 0] } : {}}
+                      transition={{ duration: 0.4 }}
+                      className="flex-1 rounded-xl bg-white/[0.06] px-4 py-3 text-base text-primary placeholder:text-gray-600 focus:outline-none"
+                      style={{
+                        boxShadow: nameError
+                          ? '0 0 0 1.5px #f87171'
+                          : `0 0 0 1px rgba(255,255,255,0.08)`,
+                      }}
+                    />
+                  </div>
+                  <p className="mt-2 text-[11px]" style={{ color: nameError ? '#f87171' : 'rgba(107,114,128,0.8)' }}>
+                    {nameError ? '↑ Enter a name, then pick a room below.' : 'Then choose a room below to start your session.'}
+                  </p>
                 </div>
               )}
-              <div className="text-xs text-gray-500">
-                <span className="block text-[10px] uppercase tracking-[0.2em]">Focused today</span>
-                <span className="font-mono text-lg tabular-nums" style={{ color: '#E1E0CC' }}>
-                  {formatDuration(stats.todaySec)}
-                </span>
-              </div>
             </motion.div>
           </div>
 
