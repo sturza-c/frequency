@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { motion } from 'framer-motion'
 import { ArrowRight, Radio, Timer, Users } from 'lucide-react'
 import { ROOMS, type RoomId } from '../lib/rooms'
@@ -32,7 +32,9 @@ export default function Lobby({
 }: LobbyProps) {
   const [name, setName] = useState(() => account?.name ?? localStorage.getItem('frequency.name') ?? '')
   const [shake, setShake] = useState(false)
+  const [nameError, setNameError] = useState(false)
   const [hovered, setHovered] = useState<RoomId>('lofi')
+  const inputRef = useRef<HTMLInputElement>(null)
 
   const totalLive = ROOMS.reduce((sum, r) => sum + (counts[r.id] ?? 0), 0)
   const featured = ROOMS.find((r) => r.id === hovered) ?? ROOMS[0]
@@ -41,7 +43,11 @@ export default function Lobby({
     const finalName = (account?.name ?? name).trim()
     if (!finalName) {
       setShake(true)
+      setNameError(true)
       setTimeout(() => setShake(false), 500)
+      // Scroll to + focus the input so the user knows what to do
+      inputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      setTimeout(() => inputRef.current?.focus(), 400)
       return
     }
     localStorage.setItem('frequency.name', finalName)
@@ -192,18 +198,29 @@ export default function Lobby({
                 </div>
               ) : (
                 <div>
-                  <label className="text-[11px] uppercase tracking-[0.2em] text-gray-500">
-                    Your name
+                  <label className="text-[11px] uppercase tracking-[0.2em]"
+                    style={{ color: nameError ? '#f87171' : 'rgb(107 114 128)' }}>
+                    {nameError ? '↓ Enter a name to join' : 'Your name'}
                   </label>
                   <motion.input
+                    ref={inputRef}
                     value={name}
-                    onChange={(e) => setName(e.target.value)}
+                    onChange={(e) => { setName(e.target.value); setNameError(false) }}
                     maxLength={24}
                     placeholder="e.g. nightowl"
                     animate={shake ? { x: [0, -6, 6, -4, 4, 0] } : {}}
                     transition={{ duration: 0.4 }}
-                    className="mt-2 block w-56 rounded-full bg-white/5 px-5 py-3 text-primary placeholder:text-gray-600 focus:outline-none focus:ring-1 focus:ring-white/15"
+                    className="mt-2 block w-56 rounded-full bg-white/5 px-5 py-3 text-primary placeholder:text-gray-600 focus:outline-none focus:ring-1"
+                    style={{
+                      outline: 'none',
+                      boxShadow: nameError ? '0 0 0 1px #f87171' : undefined,
+                    }}
                   />
+                  {nameError && (
+                    <p className="mt-1.5 text-[11px] text-red-400">
+                      Pick a name, then choose a room.
+                    </p>
+                  )}
                 </div>
               )}
               <div className="text-xs text-gray-500">
