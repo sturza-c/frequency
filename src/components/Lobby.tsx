@@ -86,23 +86,15 @@ export default function Lobby({
       />
       <div className="bg-noise pointer-events-none absolute inset-0 z-0 opacity-[0.08]" />
 
-      {/* Marquee ticker */}
-      <div className="relative z-10 flex items-center gap-3 overflow-hidden border-b border-white/5 py-2">
-        <span
-          className="ml-4 shrink-0 rounded-full px-2 py-0.5 text-[10px] uppercase tracking-[0.2em]"
-          style={{ color: featured.accent, backgroundColor: 'rgba(255,255,255,0.05)' }}
-        >
-          On air
+      {/* Top status bar */}
+      <div className="relative z-10 flex items-center justify-center border-b border-white/[0.06] py-2.5">
+        <span className="flex items-center gap-2 text-[11px] uppercase tracking-[0.22em] text-gray-500">
+          <span
+            className="h-1.5 w-1.5 rounded-full"
+            style={{ backgroundColor: connected ? featured.accent : '#555', boxShadow: connected ? `0 0 6px ${featured.accent}` : 'none' }}
+          />
+          {connected ? `${totalLive} studying live` : 'connecting…'}
         </span>
-        <div className="flex overflow-hidden whitespace-nowrap">
-          <div className="marquee-track flex shrink-0">
-            {[...ROOMS, ...ROOMS, ...ROOMS].map((r, i) => (
-              <span key={i} className="mx-6 text-[11px] uppercase tracking-[0.25em] text-gray-500">
-                {r.station} · {r.genre} ·
-              </span>
-            ))}
-          </div>
-        </div>
       </div>
 
       <div className="relative z-10 mx-auto max-w-6xl px-5 py-8 md:px-10">
