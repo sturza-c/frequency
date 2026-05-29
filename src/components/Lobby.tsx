@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react'
 import { motion } from 'framer-motion'
-import { ArrowRight, Radio, Timer, Users } from 'lucide-react'
+import { ArrowRight, Lock, Radio, Timer, Users } from 'lucide-react'
 import { ROOMS, type RoomId } from '../lib/rooms'
 import type { Account } from '../hooks/useAccount'
 import type { StudyStats } from '../hooks/useStudySessions'
@@ -16,8 +16,10 @@ interface LobbyProps {
   connected: boolean
   account: Account | null
   stats: StudyStats
+  isPremium: boolean
   onJoin: (room: RoomId, name: string) => void
   onOpenProfile: () => void
+  onUpgrade: () => void
 }
 
 const ease = [0.16, 1, 0.3, 1] as const
@@ -27,8 +29,10 @@ export default function Lobby({
   connected,
   account,
   stats,
+  isPremium,
   onJoin,
   onOpenProfile,
+  onUpgrade,
 }: LobbyProps) {
   const [name, setName] = useState(() => account?.name ?? localStorage.getItem('frequency.name') ?? '')
   const [shake, setShake] = useState(false)
@@ -39,13 +43,13 @@ export default function Lobby({
   const totalLive = ROOMS.reduce((sum, r) => sum + (counts[r.id] ?? 0), 0)
   const featured = ROOMS.find((r) => r.id === hovered) ?? ROOMS[0]
 
-  const handleJoin = (room: RoomId) => {
+  const handleJoin = (room: RoomId, locked: boolean) => {
+    if (locked) { onUpgrade(); return }
     const finalName = (account?.name ?? name).trim()
     if (!finalName) {
       setShake(true)
       setNameError(true)
       setTimeout(() => setShake(false), 500)
-      // Scroll to + focus the input so the user knows what to do
       inputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
       setTimeout(() => inputRef.current?.focus(), 400)
       return
@@ -285,10 +289,12 @@ export default function Lobby({
           </span>
         </div>
         <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {ROOMS.map((room, i) => (
+          {ROOMS.map((room, i) => {
+            const locked = !!room.premium && !isPremium
+            return (
             <motion.button
               key={room.id}
-              onClick={() => handleJoin(room.id)}
+              onClick={() => handleJoin(room.id, locked)}
               onMouseEnter={() => setHovered(room.id)}
               onFocus={() => setHovered(room.id)}
               initial={{ y: 24, opacity: 0 }}
@@ -299,14 +305,19 @@ export default function Lobby({
               className="group relative overflow-hidden rounded-[1.75rem] border p-6 text-left transition-colors"
               style={{
                 borderColor: hovered === room.id ? `${room.accent}66` : 'rgba(255,255,255,0.06)',
-                backgroundColor: '#101010',
+                backgroundColor: locked ? '#0c0c0c' : '#101010',
+                opacity: locked ? 0.75 : 1,
               }}
             >
+              {/* Locked overlay */}
+              {locked && (
+                <div className="pointer-events-none absolute inset-0 z-10 rounded-[1.75rem] bg-black/30 backdrop-blur-[1px]" />
+              )}
               <div
                 className="pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full opacity-20 blur-2xl transition-opacity group-hover:opacity-50"
                 style={{ backgroundColor: room.accent }}
               />
-              <div className="relative">
+              <div className="relative z-20">
                 <div className="flex items-center justify-between">
                   <span
                     className="text-[10px] uppercase tracking-[0.18em]"
@@ -314,19 +325,28 @@ export default function Lobby({
                   >
                     {room.genre}
                   </span>
-                  <span className="flex items-center gap-1.5 text-[11px] text-gray-500">
-                    <span className="relative flex h-1.5 w-1.5">
-                      <span
-                        className="absolute inline-flex h-full w-full animate-ping rounded-full opacity-75"
-                        style={{ backgroundColor: room.accent }}
-                      />
-                      <span
-                        className="relative inline-flex h-1.5 w-1.5 rounded-full"
-                        style={{ backgroundColor: room.accent }}
-                      />
+                  {locked ? (
+                    <span
+                      className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em]"
+                      style={{ backgroundColor: `${room.accent}22`, color: room.accent }}
+                    >
+                      <Lock className="h-2.5 w-2.5" /> Pro
                     </span>
-                    {counts[room.id] ?? 0} live
-                  </span>
+                  ) : (
+                    <span className="flex items-center gap-1.5 text-[11px] text-gray-500">
+                      <span className="relative flex h-1.5 w-1.5">
+                        <span
+                          className="absolute inline-flex h-full w-full animate-ping rounded-full opacity-75"
+                          style={{ backgroundColor: room.accent }}
+                        />
+                        <span
+                          className="relative inline-flex h-1.5 w-1.5 rounded-full"
+                          style={{ backgroundColor: room.accent }}
+                        />
+                      </span>
+                      {counts[room.id] ?? 0} live
+                    </span>
+                  )}
                 </div>
                 <h3 className="mt-6 text-2xl tracking-tight" style={{ color: '#E1E0CC' }}>
                   {room.name}
@@ -338,13 +358,17 @@ export default function Lobby({
                   className="mt-6 inline-flex items-center gap-1.5 text-sm"
                   style={{ color: room.accent }}
                 >
-                  <Timer className="h-3.5 w-3.5" />
-                  Tune in &amp; focus
-                  <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+                  {locked ? (
+                    <><Lock className="h-3.5 w-3.5" /> Unlock to tune in</>
+                  ) : (
+                    <><Timer className="h-3.5 w-3.5" /> Tune in &amp; focus
+                    <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" /></>
+                  )}
                 </span>
               </div>
             </motion.button>
-          ))}
+          )
+          })}
         </div>
 
         <footer className="mt-20 border-t border-white/5 py-8 text-center text-[11px] uppercase tracking-[0.2em] text-gray-600">

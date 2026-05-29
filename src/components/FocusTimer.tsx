@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Hourglass, Pause, Play, RotateCcw, Timer } from 'lucide-react'
+import { Hourglass, Lock, Pause, Play, RotateCcw, Timer } from 'lucide-react'
 import { formatDuration, type StudyTimer } from '../hooks/useStudyTimer'
 import type { Countdown } from '../hooks/useCountdown'
 
@@ -7,11 +7,13 @@ interface FocusTimerProps {
   timer: StudyTimer
   countdown: Countdown
   accent: string
+  isPremium: boolean
+  onUpgrade: () => void
 }
 
 const PRESETS = [15, 25, 50]
 
-export default function FocusTimer({ timer, countdown, accent }: FocusTimerProps) {
+export default function FocusTimer({ timer, countdown, accent, isPremium, onUpgrade }: FocusTimerProps) {
   const [mode, setMode] = useState<'stopwatch' | 'countdown'>('stopwatch')
   const pct = countdown.total > 0 ? 1 - countdown.remaining / countdown.total : 0
   const done = countdown.remaining === 0
@@ -20,20 +22,24 @@ export default function FocusTimer({ timer, countdown, accent }: FocusTimerProps
     <div className="rounded-2xl bg-white/[0.03] px-4 py-3">
       {/* Mode toggle */}
       <div className="mb-3 flex items-center gap-1 text-[10px] uppercase tracking-[0.14em]">
-        {(['stopwatch', 'countdown'] as const).map((m) => (
-          <button
-            key={m}
-            onClick={() => setMode(m)}
-            className="flex items-center gap-1 rounded-full px-2.5 py-1 transition-colors"
-            style={{
-              color: mode === m ? '#101010' : 'rgba(225,224,204,0.55)',
-              backgroundColor: mode === m ? accent : 'transparent',
-            }}
-          >
-            {m === 'stopwatch' ? <Timer className="h-3 w-3" /> : <Hourglass className="h-3 w-3" />}
-            {m}
-          </button>
-        ))}
+        {(['stopwatch', 'countdown'] as const).map((m) => {
+          const isLocked = m === 'countdown' && !isPremium
+          return (
+            <button
+              key={m}
+              onClick={() => isLocked ? onUpgrade() : setMode(m)}
+              className="flex items-center gap-1 rounded-full px-2.5 py-1 transition-colors"
+              style={{
+                color: mode === m ? '#101010' : 'rgba(225,224,204,0.55)',
+                backgroundColor: mode === m ? accent : 'transparent',
+              }}
+            >
+              {m === 'stopwatch' ? <Timer className="h-3 w-3" /> : isLocked ? <Lock className="h-3 w-3" /> : <Hourglass className="h-3 w-3" />}
+              {m}
+              {isLocked && <span className="ml-0.5 text-[9px] opacity-60">pro</span>}
+            </button>
+          )
+        })}
       </div>
 
       {mode === 'stopwatch' ? (

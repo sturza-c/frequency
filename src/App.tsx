@@ -5,11 +5,13 @@ import { useCountdown } from './hooks/useCountdown'
 import { useNowPlaying } from './hooks/useNowPlaying'
 import { useAccount } from './hooks/useAccount'
 import { useStudySessions } from './hooks/useStudySessions'
+import { useSubscription } from './hooks/useSubscription'
 import { ROOM_BY_ID, type RoomId } from './lib/rooms'
 import type { SceneId } from './lib/themes'
 import Lobby from './components/Lobby'
 import Room from './components/Room'
 import Profile from './components/Profile'
+import UpgradeModal from './components/UpgradeModal'
 
 interface Theme {
   accent: string
@@ -35,11 +37,13 @@ export default function App() {
   const { connected, counts, messages, users, join, leave, sendChat } = useRadio()
   const { account, signIn, signOut } = useAccount()
   const { sessions, addSession, stats } = useStudySessions(account?.name ?? null)
+  const { isPremium, upgrade } = useSubscription()
 
   const [activeRoom, setActiveRoom] = useState<RoomId | null>(null)
   const [me, setMe] = useState(account?.name ?? '')
   const [theme, setTheme] = useState<Theme>({ accent: ROOM_BY_ID.lofi.accent, scene: 'glow' })
   const [showProfile, setShowProfile] = useState(false)
+  const [showUpgrade, setShowUpgrade] = useState(false)
 
   const timer = useStudyTimer(activeRoom !== null)
   const countdown = useCountdown((totalSec) => {
@@ -111,12 +115,14 @@ export default function App() {
           timer={timer}
           countdown={countdown}
           track={track}
+          isPremium={isPremium}
           onSend={sendChat}
           onLeave={handleLeave}
           onSwitch={handleSwitch}
           onAccent={(accent) => updateTheme((prev) => ({ ...prev, accent }))}
           onScene={(scene) => updateTheme((prev) => ({ ...prev, scene }))}
           onOpenProfile={() => setShowProfile(true)}
+          onUpgrade={() => setShowUpgrade(true)}
         />
       ) : (
         <Lobby
@@ -124,8 +130,10 @@ export default function App() {
           connected={connected}
           account={account}
           stats={stats}
+          isPremium={isPremium}
           onJoin={handleJoin}
           onOpenProfile={() => setShowProfile(true)}
+          onUpgrade={() => setShowUpgrade(true)}
         />
       )}
 
@@ -139,6 +147,13 @@ export default function App() {
           onSignOut={handleSignOut}
         />
       )}
+
+      <UpgradeModal
+        open={showUpgrade}
+        onClose={() => setShowUpgrade(false)}
+        onUpgrade={upgrade}
+        accent={theme.accent}
+      />
     </main>
   )
 }

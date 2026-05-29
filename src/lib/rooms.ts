@@ -10,6 +10,8 @@ export interface Room {
   stream: string
   blurb: string
   accent: string
+  /** Premium-only rooms are locked for free users. */
+  premium?: boolean
 }
 
 const stream = (somaId: string) => `https://ice1.somafm.com/${somaId}-128-mp3`
@@ -36,6 +38,7 @@ export const ROOMS: Room[] = [
     stream: stream('sonicuniverse'),
     blurb: 'Spacious, improvised jazz for deep thinking.',
     accent: '#C28F6A',
+    premium: true,
   },
   {
     id: 'study',
@@ -56,6 +59,7 @@ export const ROOMS: Room[] = [
     stream: stream('beatblender'),
     blurb: 'Late-night grooves to coast through a problem set.',
     accent: '#CE9197',
+    premium: true,
   },
   {
     id: 'space',
@@ -76,6 +80,7 @@ export const ROOMS: Room[] = [
     stream: stream('lush'),
     blurb: 'Soft vocals to drift between revisions.',
     accent: '#A99CC4',
+    premium: true,
   },
 ]
 

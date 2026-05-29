@@ -23,12 +23,14 @@ interface RoomProps {
   timer: StudyTimerType
   countdown: Countdown
   track: string
+  isPremium: boolean
   onSend: (text: string) => void
   onLeave: () => void
   onSwitch: (id: RoomId) => void
   onAccent: (accent: string) => void
   onScene: (scene: SceneId) => void
   onOpenProfile: () => void
+  onUpgrade: () => void
 }
 
 const MIN_CHAT = 300
@@ -45,12 +47,14 @@ export default function Room({
   timer,
   countdown,
   track,
+  isPremium,
   onSend,
   onLeave,
   onSwitch,
   onAccent,
   onScene,
   onOpenProfile,
+  onUpgrade,
 }: RoomProps) {
   const [chatOpen, setChatOpen] = useState(
     () => localStorage.getItem('frequency.chatOpen') !== 'false',
@@ -150,6 +154,8 @@ export default function Room({
               timer={timer}
               countdown={countdown}
               track={track}
+              isPremium={isPremium}
+              onUpgrade={onUpgrade}
             />
           </div>
 

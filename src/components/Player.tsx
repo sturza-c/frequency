@@ -16,9 +16,11 @@ interface PlayerProps {
   timer: StudyTimerType
   countdown: Countdown
   track: string
+  isPremium: boolean
+  onUpgrade: () => void
 }
 
-export default function Player({ room, listeners, accent, timer, countdown, track }: PlayerProps) {
+export default function Player({ room, listeners, accent, timer, countdown, track, isPremium, onUpgrade }: PlayerProps) {
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const [playing, setPlaying] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -140,7 +142,7 @@ export default function Player({ room, listeners, accent, timer, countdown, trac
 
       {/* Focus timer */}
       <div className="relative">
-        <FocusTimer timer={timer} countdown={countdown} accent={accent} />
+        <FocusTimer timer={timer} countdown={countdown} accent={accent} isPremium={isPremium} onUpgrade={onUpgrade} />
       </div>
 
       {/* Controls */}
