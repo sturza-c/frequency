@@ -40,6 +40,7 @@ export default function App() {
   const { isPremium, upgrade } = useSubscription()
 
   const [activeRoom, setActiveRoom] = useState<RoomId | null>(null)
+  const [view, setView] = useState<'lobby' | 'room'>('lobby')
   const [me, setMe] = useState(account?.name ?? '')
   const [theme, setTheme] = useState<Theme>({ accent: ROOM_BY_ID.lofi.accent, scene: 'glow' })
   const [showProfile, setShowProfile] = useState(false)
@@ -71,12 +72,14 @@ export default function App() {
     signIn(name)
     setMe(name)
     setActiveRoom(room)
+    setView('room')
     join(room, name)
   }
 
   const handleSwitch = (room: RoomId) => {
     if (room === activeRoom) return
     setActiveRoom(room)
+    setView('room')
     join(room, me)
   }
 
@@ -88,14 +91,19 @@ export default function App() {
     timer.reset()
   }
 
-  const handleLeave = () => {
+  // Go back to lobby but keep audio playing.
+  const handleGoToLobby = () => setView('lobby')
+
+  // Truly stop: log session, disconnect, kill audio.
+  const handleStopMusic = () => {
     logStopwatch()
     leave()
     setActiveRoom(null)
+    setView('lobby')
   }
 
   const handleSignOut = () => {
-    handleLeave()
+    handleStopMusic()
     signOut()
     setMe('')
     setShowProfile(false)
@@ -103,35 +111,43 @@ export default function App() {
 
   return (
     <main className="bg-black">
-      {activeRoom ? (
-        <Room
-          room={ROOM_BY_ID[activeRoom]}
-          me={me}
-          messages={messages}
-          users={users}
-          counts={counts}
-          accent={theme.accent}
-          scene={theme.scene}
-          timer={timer}
-          countdown={countdown}
-          track={track}
-          isPremium={isPremium}
-          onSend={sendChat}
-          onLeave={handleLeave}
-          onSwitch={handleSwitch}
-          onAccent={(accent) => updateTheme((prev) => ({ ...prev, accent }))}
-          onScene={(scene) => updateTheme((prev) => ({ ...prev, scene }))}
-          onOpenProfile={() => setShowProfile(true)}
-          onUpgrade={() => setShowUpgrade(true)}
-        />
-      ) : (
+      {/* Room stays mounted while activeRoom is set so audio never stops */}
+      {activeRoom && (
+        <div className={view === 'room' ? undefined : 'hidden'}>
+          <Room
+            room={ROOM_BY_ID[activeRoom]}
+            me={me}
+            messages={messages}
+            users={users}
+            counts={counts}
+            accent={theme.accent}
+            scene={theme.scene}
+            timer={timer}
+            countdown={countdown}
+            track={track}
+            isPremium={isPremium}
+            onSend={sendChat}
+            onLeave={handleGoToLobby}
+            onSwitch={handleSwitch}
+            onAccent={(accent) => updateTheme((prev) => ({ ...prev, accent }))}
+            onScene={(scene) => updateTheme((prev) => ({ ...prev, scene }))}
+            onOpenProfile={() => setShowProfile(true)}
+            onUpgrade={() => setShowUpgrade(true)}
+          />
+        </div>
+      )}
+
+      {view === 'lobby' && (
         <Lobby
           counts={counts}
           connected={connected}
           account={account}
           stats={stats}
           isPremium={isPremium}
+          playingRoom={activeRoom ? ROOM_BY_ID[activeRoom] : null}
+          nowPlayingTrack={track}
           onJoin={handleJoin}
+          onStopMusic={handleStopMusic}
           onOpenProfile={() => setShowProfile(true)}
           onUpgrade={() => setShowUpgrade(true)}
         />

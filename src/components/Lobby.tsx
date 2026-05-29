@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react'
-import { motion } from 'framer-motion'
-import { ArrowRight, Lock, Radio, Timer, Users } from 'lucide-react'
-import { ROOMS, type RoomId } from '../lib/rooms'
+import { motion, AnimatePresence } from 'framer-motion'
+import { ArrowRight, Lock, Radio, Square, Timer, Users } from 'lucide-react'
+import { ROOMS, type Room as RoomType, type RoomId } from '../lib/rooms'
 import type { Account } from '../hooks/useAccount'
 import type { StudyStats } from '../hooks/useStudySessions'
 import { formatDuration } from '../hooks/useStudyTimer'
@@ -17,7 +17,10 @@ interface LobbyProps {
   account: Account | null
   stats: StudyStats
   isPremium: boolean
+  playingRoom: RoomType | null
+  nowPlayingTrack: string
   onJoin: (room: RoomId, name: string) => void
+  onStopMusic: () => void
   onOpenProfile: () => void
   onUpgrade: () => void
 }
@@ -30,7 +33,10 @@ export default function Lobby({
   account,
   stats,
   isPremium,
+  playingRoom,
+  nowPlayingTrack,
   onJoin,
+  onStopMusic,
   onOpenProfile,
   onUpgrade,
 }: LobbyProps) {
@@ -375,6 +381,70 @@ export default function Lobby({
           Frequency · live study radio · powered by SomaFM
         </footer>
       </div>
+
+      {/* Persistent mini player — visible while music is still playing in the background */}
+      <AnimatePresence>
+        {playingRoom && (
+          <motion.div
+            initial={{ y: 80, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 80, opacity: 0 }}
+            transition={{ type: 'spring', damping: 26, stiffness: 280 }}
+            className="fixed bottom-5 left-1/2 z-50 -translate-x-1/2"
+          >
+            <div
+              className="flex items-center gap-4 rounded-2xl border px-5 py-3 shadow-2xl backdrop-blur-xl"
+              style={{
+                backgroundColor: 'rgba(10,10,10,0.85)',
+                borderColor: `${playingRoom.accent}44`,
+                boxShadow: `0 8px 40px ${playingRoom.accent}22`,
+              }}
+            >
+              {/* Animated live dot */}
+              <span className="relative flex h-2 w-2 shrink-0">
+                <span
+                  className="absolute inline-flex h-full w-full animate-ping rounded-full opacity-60"
+                  style={{ backgroundColor: playingRoom.accent }}
+                />
+                <span
+                  className="relative inline-flex h-2 w-2 rounded-full"
+                  style={{ backgroundColor: playingRoom.accent }}
+                />
+              </span>
+
+              {/* Room + track info */}
+              <div className="min-w-0">
+                <p className="text-xs font-medium" style={{ color: playingRoom.accent }}>
+                  {playingRoom.name}
+                </p>
+                {nowPlayingTrack && (
+                  <p className="max-w-[200px] truncate text-[11px] text-gray-400">
+                    {nowPlayingTrack}
+                  </p>
+                )}
+              </div>
+
+              {/* Back to room */}
+              <button
+                onClick={() => onJoin(playingRoom.id, account?.name ?? '')}
+                className="rounded-xl px-3 py-1.5 text-[11px] font-medium transition-colors hover:opacity-80"
+                style={{ backgroundColor: `${playingRoom.accent}22`, color: playingRoom.accent }}
+              >
+                Back to room
+              </button>
+
+              {/* Stop */}
+              <button
+                onClick={onStopMusic}
+                aria-label="Stop music"
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-white/5 text-gray-400 transition-colors hover:bg-white/10 hover:text-red-400"
+              >
+                <Square className="h-3.5 w-3.5 fill-current" />
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }
