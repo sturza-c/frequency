@@ -114,10 +114,9 @@ export default function Player({ room, listeners, accent, timer, countdown, trac
           />
         </div>
 
-        {/* Right: track + visualizer + controls */}
+        {/* Right: track info + controls */}
         <div className="min-w-0 flex-1 space-y-4">
           <NowPlaying track={track} accent={accent} playing={playing} />
-          <Visualizer active={playing} accent={accent} mirror className="h-10 w-full" />
 
           {/* Play + volume inline */}
           <div className="flex items-center gap-4">
@@ -147,14 +146,19 @@ export default function Player({ room, listeners, accent, timer, countdown, trac
         </div>
       </div>
 
+      {/* Equalizer — full width, always visible */}
+      <div className="relative mt-6">
+        <Visualizer active={playing} accent={accent} mirror className="h-16 w-full" />
+      </div>
+
       {error && (
-        <p className="relative mt-4 text-center text-xs text-red-300/80">
+        <p className="relative mt-3 text-center text-xs text-red-300/80">
           Couldn't reach the stream. Press play to retry.
         </p>
       )}
 
       {/* Focus timer */}
-      <div className="relative mt-6">
+      <div className="relative mt-4">
         <FocusTimer timer={timer} countdown={countdown} accent={accent} isPremium={isPremium} onUpgrade={onUpgrade} />
       </div>
     </div>
