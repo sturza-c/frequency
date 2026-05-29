@@ -27,15 +27,13 @@ export default function Player({ room, listeners, accent, timer, countdown, trac
   const [volume, setVolume] = useState(0.7)
   const [error, setError] = useState(false)
 
-  // Reload the stream when the room changes, and start playing.
   useEffect(() => {
     const audio = audioRef.current
     if (!audio) return
     setError(false)
     setLoading(true)
     audio.load()
-    audio
-      .play()
+    audio.play()
       .then(() => setPlaying(true))
       .catch(() => setPlaying(false))
       .finally(() => setLoading(false))
@@ -54,8 +52,7 @@ export default function Player({ room, listeners, accent, timer, countdown, trac
     } else {
       setLoading(true)
       setError(false)
-      audio
-        .play()
+      audio.play()
         .then(() => setPlaying(true))
         .catch(() => setError(true))
         .finally(() => setLoading(false))
@@ -65,52 +62,37 @@ export default function Player({ room, listeners, accent, timer, countdown, trac
   const VolumeIcon = volume === 0 ? VolumeX : volume < 0.5 ? Volume1 : Volume2
 
   return (
-    <div className="relative flex h-full flex-col justify-between gap-4 overflow-hidden rounded-[2rem] bg-[#101010] p-6 md:p-8">
+    <div className="relative overflow-hidden rounded-[2rem] bg-[#101010] p-6 md:p-8">
       <audio
         ref={audioRef}
         src={room.stream}
         preload="none"
-        onPlaying={() => {
-          setPlaying(true)
-          setLoading(false)
-        }}
+        onPlaying={() => { setPlaying(true); setLoading(false) }}
         onWaiting={() => setLoading(true)}
         onPause={() => setPlaying(false)}
-        onError={() => {
-          setError(true)
-          setLoading(false)
-          setPlaying(false)
-        }}
+        onError={() => { setError(true); setLoading(false); setPlaying(false) }}
       />
 
       {/* Ambient glow */}
       <motion.div
         className="pointer-events-none absolute -top-24 left-1/2 h-72 w-72 -translate-x-1/2 rounded-full blur-3xl"
         style={{ backgroundColor: accent }}
-        animate={{
-          opacity: playing ? [0.12, 0.22, 0.12] : 0.06,
-          scale: playing ? [1, 1.1, 1] : 1,
-        }}
+        animate={{ opacity: playing ? [0.12, 0.22, 0.12] : 0.06, scale: playing ? [1, 1.1, 1] : 1 }}
         transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
       />
 
-      {/* Top row */}
-      <div className="relative flex items-center justify-between">
+      {/* Live badge + listeners */}
+      <div className="relative mb-6 flex items-center justify-between">
         <span
           className="inline-flex items-center gap-2 rounded-full px-3 py-1 text-[10px] uppercase tracking-[0.18em]"
           style={{ color: accent, backgroundColor: 'rgba(255,255,255,0.04)' }}
         >
           <span className="relative flex h-1.5 w-1.5">
             {playing && (
-              <span
-                className="absolute inline-flex h-full w-full animate-ping rounded-full opacity-75"
-                style={{ backgroundColor: accent }}
-              />
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full opacity-75"
+                style={{ backgroundColor: accent }} />
             )}
-            <span
-              className="relative inline-flex h-1.5 w-1.5 rounded-full"
-              style={{ backgroundColor: accent }}
-            />
+            <span className="relative inline-flex h-1.5 w-1.5 rounded-full" style={{ backgroundColor: accent }} />
           </span>
           Live · {room.genre}
         </span>
@@ -119,63 +101,61 @@ export default function Player({ room, listeners, accent, timer, countdown, trac
         </span>
       </div>
 
-      {/* Turntable + visualizer side by side on wide screens */}
-      <div className="relative grid items-center gap-6 sm:grid-cols-[auto_1fr]">
-        <Turntable
-          playing={playing}
-          accent={accent}
-          label={room.name}
-          sublabel={room.station}
-          className="mx-auto w-36 md:w-44"
-        />
-        <div className="flex flex-col gap-3">
-          <Visualizer active={playing} accent={accent} mirror className="h-20 w-full" />
+      {/* Main: turntable + right column */}
+      <div className="relative flex items-center gap-6 md:gap-8">
+        {/* Turntable */}
+        <div className="shrink-0">
+          <Turntable
+            playing={playing}
+            accent={accent}
+            label={room.name}
+            sublabel={room.station}
+            className="w-28 md:w-36"
+          />
+        </div>
+
+        {/* Right: track + visualizer + controls */}
+        <div className="min-w-0 flex-1 space-y-4">
           <NowPlaying track={track} accent={accent} playing={playing} />
+          <Visualizer active={playing} accent={accent} mirror className="h-10 w-full" />
+
+          {/* Play + volume inline */}
+          <div className="flex items-center gap-4">
+            <button
+              onClick={toggle}
+              aria-label={playing ? 'Pause' : 'Play'}
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-black transition-transform hover:scale-105"
+              style={{ backgroundColor: accent }}
+            >
+              {loading ? (
+                <span className="h-4 w-4 animate-spin rounded-full border-2 border-black/30 border-t-black" />
+              ) : playing ? (
+                <Pause className="h-5 w-5" fill="currentColor" />
+              ) : (
+                <Play className="ml-0.5 h-5 w-5" fill="currentColor" />
+              )}
+            </button>
+            <VolumeIcon className="h-4 w-4 shrink-0 text-gray-400" />
+            <input
+              type="range" min={0} max={1} step={0.01} value={volume}
+              onChange={(e) => setVolume(Number(e.target.value))}
+              aria-label="Volume"
+              className="radio-range h-1 flex-1 cursor-pointer appearance-none rounded-full"
+              style={{ accentColor: accent }}
+            />
+          </div>
         </div>
       </div>
 
       {error && (
-        <p className="relative text-center text-xs text-red-300/80">
+        <p className="relative mt-4 text-center text-xs text-red-300/80">
           Couldn't reach the stream. Press play to retry.
         </p>
       )}
 
       {/* Focus timer */}
-      <div className="relative">
+      <div className="relative mt-6">
         <FocusTimer timer={timer} countdown={countdown} accent={accent} isPremium={isPremium} onUpgrade={onUpgrade} />
-      </div>
-
-      {/* Controls */}
-      <div className="relative flex items-center gap-5">
-        <button
-          onClick={toggle}
-          aria-label={playing ? 'Pause' : 'Play'}
-          className="group flex h-14 w-14 items-center justify-center rounded-full text-black transition-transform hover:scale-105"
-          style={{ backgroundColor: accent }}
-        >
-          {loading ? (
-            <span className="h-5 w-5 animate-spin rounded-full border-2 border-black/30 border-t-black" />
-          ) : playing ? (
-            <Pause className="h-6 w-6" fill="currentColor" />
-          ) : (
-            <Play className="ml-0.5 h-6 w-6" fill="currentColor" />
-          )}
-        </button>
-
-        <div className="flex flex-1 items-center gap-3">
-          <VolumeIcon className="h-4 w-4 shrink-0 text-gray-400" />
-          <input
-            type="range"
-            min={0}
-            max={1}
-            step={0.01}
-            value={volume}
-            onChange={(e) => setVolume(Number(e.target.value))}
-            aria-label="Volume"
-            className="radio-range h-1 w-full max-w-[200px] cursor-pointer appearance-none rounded-full"
-            style={{ accentColor: accent }}
-          />
-        </div>
       </div>
     </div>
   )

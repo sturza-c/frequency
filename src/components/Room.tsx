@@ -145,7 +145,7 @@ export default function Room({
           <RoomSwitcher activeId={room.id} counts={counts} accent={accent} onSwitch={onSwitch} />
         </div>
 
-        <div ref={containerRef} className="flex flex-col gap-4 lg:h-[82vh] lg:flex-row">
+        <div ref={containerRef} className="flex flex-col gap-4 lg:flex-row lg:items-start">
           <div className="min-w-0 flex-1">
             <Player
               room={room}
@@ -175,7 +175,7 @@ export default function Room({
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ duration: 0.2 }}
-              className="h-[70vh] w-full shrink-0 lg:h-full lg:w-[var(--chat-w)]"
+              className="h-[70vh] w-full shrink-0 lg:sticky lg:top-8 lg:h-auto lg:w-[var(--chat-w)]"
               style={{ '--chat-w': `${chatWidth}px` } as React.CSSProperties}
             >
               <Chat messages={messages} users={users} me={me} accent={accent} onSend={onSend} />

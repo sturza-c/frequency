@@ -33,7 +33,7 @@ export default function Chat({ messages, users, me, accent, onSend }: ChatProps)
   }
 
   return (
-    <div className="flex h-full flex-col overflow-hidden rounded-[2rem] bg-[#101010]">
+    <div className="flex h-[70vh] flex-col overflow-hidden rounded-[2rem] bg-[#101010] lg:h-auto lg:min-h-[400px] lg:max-h-[85vh]">
       {/* Header */}
       <div className="flex items-center justify-between border-b border-white/5 px-6 py-4">
         <div>
