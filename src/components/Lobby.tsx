@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useRef, useState, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ArrowRight, Lock, Radio, Square, Timer, Users } from 'lucide-react'
 import { ROOMS, type Room as RoomType, type RoomId } from '../lib/rooms'
@@ -43,8 +43,18 @@ export default function Lobby({
   const [name, setName] = useState(() => account?.name ?? localStorage.getItem('frequency.name') ?? '')
   const [shake, setShake] = useState(false)
   const [nameError, setNameError] = useState(false)
+  const [nameConfirmed, setNameConfirmed] = useState(() => !!(account?.name ?? localStorage.getItem('frequency.name')))
   const [hovered, setHovered] = useState<RoomId>('lofi')
   const inputRef = useRef<HTMLInputElement>(null)
+  const roomsRef = useRef<HTMLDivElement>(null)
+
+  const confirmName = useCallback(() => {
+    const n = name.trim()
+    if (!n) { setShake(true); setNameError(true); setTimeout(() => setShake(false), 500); return }
+    localStorage.setItem('frequency.name', n)
+    setNameConfirmed(true)
+    setTimeout(() => roomsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80)
+  }, [name])
 
   const totalLive = ROOMS.reduce((sum, r) => sum + (counts[r.id] ?? 0), 0)
   const featured = ROOMS.find((r) => r.id === hovered) ?? ROOMS[0]
@@ -203,6 +213,26 @@ export default function Lobby({
                   </div>
                   <span className="ml-auto text-[11px] text-gray-500">↓ pick a room</span>
                 </div>
+              ) : nameConfirmed ? (
+                /* Name confirmed — show it with an edit option */
+                <div className="flex items-center gap-3 rounded-2xl border border-white/[0.08] bg-white/[0.03] px-5 py-4">
+                  <span
+                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-bold"
+                    style={{ backgroundColor: featured.accent, color: '#101010' }}
+                  >
+                    {name.slice(0, 2).toUpperCase()}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium" style={{ color: '#E1E0CC' }}>{name}</p>
+                    <p className="text-[11px] text-gray-500">↓ pick a room to start</p>
+                  </div>
+                  <button
+                    onClick={() => setNameConfirmed(false)}
+                    className="text-[11px] text-gray-500 hover:text-gray-300"
+                  >
+                    edit
+                  </button>
+                </div>
               ) : (
                 <div>
                   <p className="mb-2 text-sm" style={{ color: '#E1E0CC' }}>
@@ -212,7 +242,8 @@ export default function Lobby({
                     <motion.input
                       ref={inputRef}
                       value={name}
-                      onChange={(e) => { setName(e.target.value); setNameError(false) }}
+                      onChange={(e) => { setName(e.target.value); setNameError(false); setNameConfirmed(false) }}
+                      onKeyDown={(e) => e.key === 'Enter' && confirmName()}
                       maxLength={24}
                       placeholder="your name or alias…"
                       animate={shake ? { x: [0, -6, 6, -4, 4, 0] } : {}}
@@ -224,9 +255,16 @@ export default function Lobby({
                           : `0 0 0 1px rgba(255,255,255,0.08)`,
                       }}
                     />
+                    <button
+                      onClick={confirmName}
+                      className="shrink-0 rounded-xl px-4 py-3 text-sm font-semibold transition-opacity hover:opacity-80"
+                      style={{ backgroundColor: featured.accent, color: '#101010' }}
+                    >
+                      Continue →
+                    </button>
                   </div>
                   <p className="mt-2 text-[11px]" style={{ color: nameError ? '#f87171' : 'rgba(107,114,128,0.8)' }}>
-                    {nameError ? '↑ Enter a name, then pick a room below.' : 'Then choose a room below to start your session.'}
+                    {nameError ? '↑ Enter a name first.' : 'Press Enter or click Continue.'}
                   </p>
                 </div>
               )}
@@ -285,7 +323,7 @@ export default function Lobby({
         )}
 
         {/* Tuner / room cards */}
-        <div className="mt-16 flex items-end justify-between">
+        <div ref={roomsRef} className="mt-16 flex items-end justify-between">
           <h2 className="text-2xl tracking-tight md:text-3xl" style={{ color: '#E1E0CC' }}>
             Pick a room
           </h2>
