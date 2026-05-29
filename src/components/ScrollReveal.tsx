@@ -15,15 +15,41 @@ export default function ScrollReveal({ text, className = '' }: ScrollRevealProps
   })
 
   const chars = text.split('')
+  // Group chars into words so flex-wrap never breaks a word in the middle.
+  // Each word is an inline-flex wrapper; spaces are separate flex items.
+  const words = text.split(' ')
+  let charIndex = 0
   return (
     <p ref={ref} className={`relative flex flex-wrap ${className}`}>
-      {chars.map((char, i) => {
-        const start = i / chars.length
-        const end = start + 1 / chars.length
+      {words.map((word, wi) => {
+        const wordChars = word.split('')
+        const wordStart = charIndex
+        charIndex += wordChars.length + (wi < words.length - 1 ? 1 : 0) // +1 for the space
         return (
-          <Char key={i} progress={scrollYProgress} range={[start, end]}>
-            {char}
-          </Char>
+          <span key={wi} className="inline-flex whitespace-nowrap">
+            {wordChars.map((char, ci) => {
+              const idx = wordStart + ci
+              const start = idx / chars.length
+              const end = start + 1 / chars.length
+              return (
+                <Char key={ci} progress={scrollYProgress} range={[start, end]}>
+                  {char}
+                </Char>
+              )
+            })}
+            {/* space after each word except the last */}
+            {wi < words.length - 1 && (
+              <Char
+                progress={scrollYProgress}
+                range={[
+                  (wordStart + wordChars.length) / chars.length,
+                  (wordStart + wordChars.length + 1) / chars.length,
+                ]}
+              >
+                {' '}
+              </Char>
+            )}
+          </span>
         )
       })}
     </p>
