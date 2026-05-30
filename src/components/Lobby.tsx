@@ -420,53 +420,50 @@ export default function Lobby({
         </footer>
       </div>
 
-      {/* Persistent mini player — visible while music is still playing in the background */}
+      {/* Persistent now-playing bar — full width strip at bottom */}
       <AnimatePresence>
         {playingRoom && (
           <motion.div
-            initial={{ y: 80, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            exit={{ y: 80, opacity: 0 }}
-            transition={{ type: 'spring', damping: 26, stiffness: 280 }}
-            className="fixed bottom-5 left-1/2 z-50 -translate-x-1/2"
+            initial={{ y: 64 }}
+            animate={{ y: 0 }}
+            exit={{ y: 64 }}
+            transition={{ type: 'spring', damping: 28, stiffness: 300 }}
+            className="fixed bottom-0 inset-x-0 z-50 border-t backdrop-blur-xl"
+            style={{
+              backgroundColor: 'rgba(8,8,8,0.92)',
+              borderColor: `${playingRoom.accent}30`,
+            }}
           >
-            <div
-              className="flex items-center gap-4 rounded-2xl border px-5 py-3 shadow-2xl backdrop-blur-xl"
-              style={{
-                backgroundColor: 'rgba(10,10,10,0.85)',
-                borderColor: `${playingRoom.accent}44`,
-                boxShadow: `0 8px 40px ${playingRoom.accent}22`,
-              }}
-            >
-              {/* Animated live dot */}
+            {/* Thin accent line at top */}
+            <div className="absolute inset-x-0 top-0 h-px" style={{ backgroundColor: playingRoom.accent, opacity: 0.4 }} />
+
+            <div className="mx-auto flex max-w-6xl items-center gap-4 px-5 py-3 md:px-10">
+              {/* Live dot */}
               <span className="relative flex h-2 w-2 shrink-0">
-                <span
-                  className="absolute inline-flex h-full w-full animate-ping rounded-full opacity-60"
-                  style={{ backgroundColor: playingRoom.accent }}
-                />
-                <span
-                  className="relative inline-flex h-2 w-2 rounded-full"
-                  style={{ backgroundColor: playingRoom.accent }}
-                />
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full opacity-60"
+                  style={{ backgroundColor: playingRoom.accent }} />
+                <span className="relative inline-flex h-2 w-2 rounded-full"
+                  style={{ backgroundColor: playingRoom.accent }} />
               </span>
 
-              {/* Room + track info */}
-              <div className="min-w-0">
-                <p className="text-xs font-medium" style={{ color: playingRoom.accent }}>
-                  {playingRoom.name}
-                </p>
-                {nowPlayingTrack && (
-                  <p className="max-w-[200px] truncate text-[11px] text-gray-400">
-                    {nowPlayingTrack}
-                  </p>
-                )}
-              </div>
+              {/* Room name */}
+              <span className="shrink-0 text-xs font-semibold uppercase tracking-[0.16em]"
+                style={{ color: playingRoom.accent }}>
+                {playingRoom.name}
+              </span>
+
+              <span className="text-gray-700">·</span>
+
+              {/* Track — grows to fill space */}
+              <span className="min-w-0 flex-1 truncate text-[12px] text-gray-400">
+                {nowPlayingTrack || 'Loading…'}
+              </span>
 
               {/* Back to room */}
               <button
                 onClick={() => onJoin(playingRoom.id, account?.name ?? '')}
-                className="rounded-xl px-3 py-1.5 text-[11px] font-medium transition-colors hover:opacity-80"
-                style={{ backgroundColor: `${playingRoom.accent}22`, color: playingRoom.accent }}
+                className="shrink-0 rounded-full px-4 py-1.5 text-[11px] font-semibold transition-opacity hover:opacity-80"
+                style={{ backgroundColor: playingRoom.accent, color: '#101010' }}
               >
                 Back to room
               </button>
@@ -475,7 +472,7 @@ export default function Lobby({
               <button
                 onClick={onStopMusic}
                 aria-label="Stop music"
-                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-white/5 text-gray-400 transition-colors hover:bg-white/10 hover:text-red-400"
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/5 text-gray-400 transition-colors hover:bg-white/10 hover:text-red-400"
               >
                 <Square className="h-3.5 w-3.5 fill-current" />
               </button>
