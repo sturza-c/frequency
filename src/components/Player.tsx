@@ -101,9 +101,8 @@ export default function Player({ room, listeners, accent, timer, countdown, trac
         </span>
       </div>
 
-      {/* Main: turntable + right column */}
+      {/* Turntable + now playing side by side */}
       <div className="relative flex items-center gap-6 md:gap-8">
-        {/* Turntable */}
         <div className="shrink-0">
           <Turntable
             playing={playing}
@@ -113,42 +112,55 @@ export default function Player({ room, listeners, accent, timer, countdown, trac
             className="w-28 md:w-36"
           />
         </div>
-
-        {/* Right: track info + controls */}
-        <div className="min-w-0 flex-1 space-y-4">
+        <div className="min-w-0 flex-1">
           <NowPlaying track={track} accent={accent} playing={playing} />
-
-          {/* Play + volume inline */}
-          <div className="flex items-center gap-4">
-            <button
-              onClick={toggle}
-              aria-label={playing ? 'Pause' : 'Play'}
-              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-black transition-transform hover:scale-105"
-              style={{ backgroundColor: accent }}
-            >
-              {loading ? (
-                <span className="h-4 w-4 animate-spin rounded-full border-2 border-black/30 border-t-black" />
-              ) : playing ? (
-                <Pause className="h-5 w-5" fill="currentColor" />
-              ) : (
-                <Play className="ml-0.5 h-5 w-5" fill="currentColor" />
-              )}
-            </button>
-            <VolumeIcon className="h-4 w-4 shrink-0 text-gray-400" />
-            <input
-              type="range" min={0} max={1} step={0.01} value={volume}
-              onChange={(e) => setVolume(Number(e.target.value))}
-              aria-label="Volume"
-              className="radio-range h-1 flex-1 cursor-pointer appearance-none rounded-full"
-              style={{ accentColor: accent }}
-            />
-          </div>
         </div>
       </div>
 
-      {/* Equalizer — full width, always visible */}
+      {/* Equalizer */}
       <div className="relative mt-6">
         <Visualizer active={playing} accent={accent} mirror className="h-16 w-full" />
+      </div>
+
+      {/* Transport bar — Spotify style */}
+      <div className="relative mt-4 flex items-center gap-4 rounded-2xl bg-white/[0.03] px-5 py-3">
+        {/* Left: station label */}
+        <div className="w-32 shrink-0 min-w-0">
+          <p className="truncate text-[10px] uppercase tracking-[0.18em]" style={{ color: accent }}>
+            {room.name}
+          </p>
+          <p className="truncate text-[11px] text-gray-500">{room.station}</p>
+        </div>
+
+        {/* Center: play/pause */}
+        <div className="flex flex-1 justify-center">
+          <button
+            onClick={toggle}
+            aria-label={playing ? 'Pause' : 'Play'}
+            className="flex h-12 w-12 items-center justify-center rounded-full text-black transition-transform hover:scale-105 active:scale-95"
+            style={{ backgroundColor: accent }}
+          >
+            {loading ? (
+              <span className="h-4 w-4 animate-spin rounded-full border-2 border-black/30 border-t-black" />
+            ) : playing ? (
+              <Pause className="h-5 w-5" fill="currentColor" />
+            ) : (
+              <Play className="ml-0.5 h-5 w-5" fill="currentColor" />
+            )}
+          </button>
+        </div>
+
+        {/* Right: volume */}
+        <div className="flex w-32 shrink-0 items-center justify-end gap-2">
+          <VolumeIcon className="h-4 w-4 shrink-0 text-gray-500" />
+          <input
+            type="range" min={0} max={1} step={0.01} value={volume}
+            onChange={(e) => setVolume(Number(e.target.value))}
+            aria-label="Volume"
+            className="radio-range h-1 w-20 cursor-pointer appearance-none rounded-full"
+            style={{ accentColor: accent }}
+          />
+        </div>
       </div>
 
       {error && (
