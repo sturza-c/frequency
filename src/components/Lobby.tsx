@@ -1,6 +1,6 @@
 import { useRef, useState, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ArrowRight, Lock, Plus, Radio, Square, Timer, Users, X } from 'lucide-react'
+import { ArrowRight, Lock, Plus, Radio, Square, Timer, Trash2, Users, X } from 'lucide-react'
 import { ROOMS, type Room as RoomType, type RoomId } from '../lib/rooms'
 import { isHot } from '../lib/hot'
 import type { Account } from '../hooks/useAccount'
@@ -25,6 +25,7 @@ interface LobbyProps {
   onJoin: (room: RoomId, name: string) => void
   onJoinRoom: (room: RoomType, name: string) => void
   onCreateRoom: () => void
+  onDeleteRoom: (id: string) => void
   onDismissInvite: () => void
   onStopMusic: () => void
   onOpenProfile: () => void
@@ -46,6 +47,7 @@ export default function Lobby({
   onJoin,
   onJoinRoom,
   onCreateRoom,
+  onDeleteRoom,
   onDismissInvite,
   onStopMusic,
   onOpenProfile,
@@ -407,16 +409,29 @@ export default function Lobby({
           ) : (
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {privateRooms.map((room) => (
-                <button
+                <div
                   key={room.id}
+                  role="button"
+                  tabIndex={0}
                   onClick={() => handleJoinPrivate(room)}
-                  className="group relative overflow-hidden rounded-[1.75rem] border p-6 text-left transition-colors"
+                  onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && handleJoinPrivate(room)}
+                  className="group relative cursor-pointer overflow-hidden rounded-[1.75rem] border p-6 text-left transition-colors"
                   style={{ borderColor: `${room.accent}33`, backgroundColor: '#101010' }}
                 >
                   <div
                     className="pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full opacity-20 blur-2xl transition-opacity group-hover:opacity-50"
                     style={{ backgroundColor: room.accent }}
                   />
+
+                  {/* Delete — appears on hover */}
+                  <button
+                    onClick={(e) => { e.stopPropagation(); onDeleteRoom(room.id) }}
+                    aria-label={`Delete ${room.name}`}
+                    className="absolute right-4 top-4 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-white/5 text-gray-500 opacity-0 transition-all hover:bg-red-500/15 hover:text-red-400 focus:opacity-100 group-hover:opacity-100"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+
                   <div className="relative">
                     <span
                       className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em]"
@@ -433,7 +448,7 @@ export default function Lobby({
                       <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
                     </span>
                   </div>
-                </button>
+                </div>
               ))}
             </div>
           )}

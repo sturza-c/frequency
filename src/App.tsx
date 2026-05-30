@@ -175,6 +175,7 @@ export default function App() {
           onJoin={handleJoin}
           onJoinRoom={handleJoinRoom}
           onCreateRoom={handleCreateClick}
+          onDeleteRoom={privateRooms.remove}
           onDismissInvite={() => setInvite(null)}
           onStopMusic={handleStopMusic}
           onOpenProfile={() => setShowProfile(true)}
