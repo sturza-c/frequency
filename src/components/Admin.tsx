@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Activity, Eye, EyeOff, RefreshCw, Trash2, Users, Lock, ArrowUp, ArrowDown } from 'lucide-react'
+import { Activity, Eye, EyeOff, RefreshCw, Trash2, Users, UserX, Lock, ArrowUp, ArrowDown } from 'lucide-react'
 import { ROOM_BY_ID } from '../lib/rooms'
 import {
   loadStationConfig,
@@ -16,7 +16,7 @@ interface RoomStat {
   id: string
   private: boolean
   count: number
-  members: string[]
+  members: { id: string; name: string }[]
   messages: number
   lastTs: number | null
   recent: { name: string; text: string; ts: number; id: string }[]
@@ -105,6 +105,10 @@ export default function Admin() {
   const clearRoom = async (room: string) => {
     await fetch(`${API}/api/admin/clear?token=${encodeURIComponent(token)}&room=${room}`, { method: 'POST' })
     setStats((s) => s && { ...s, rooms: s.rooms.map((r) => (r.id === room ? { ...r, recent: [], messages: 0 } : r)) })
+  }
+
+  const kick = async (clientId: string) => {
+    await fetch(`${API}/api/admin/kick?token=${encodeURIComponent(token)}&client=${clientId}`, { method: 'POST' })
   }
 
   const persistCfg = (next: StationConfig) => { setCfg(next); saveStationConfig(next) }
@@ -208,9 +212,6 @@ export default function Admin() {
                   {r.private ? '🔒 ' : ''}{roomLabel(r.id)}
                 </span>
                 <span className="text-xs text-gray-500">{r.count} live · {r.messages} msgs</span>
-                {r.members.length > 0 && (
-                  <span className="truncate text-[11px] text-gray-600">{r.members.join(', ')}</span>
-                )}
                 <div className="ml-auto flex items-center gap-2">
                   <button
                     onClick={() => setExpanded(expanded === r.id ? null : r.id)}
@@ -226,6 +227,24 @@ export default function Admin() {
                   </button>
                 </div>
               </div>
+              {/* Members with kick buttons */}
+              {r.members.length > 0 && (
+                <div className="mt-3 flex flex-wrap gap-1.5">
+                  {r.members.map((m) => (
+                    <span key={m.id} className="group/mem flex items-center gap-1 rounded-full bg-white/5 py-0.5 pl-2.5 pr-1 text-[11px] text-gray-300">
+                      {m.name}
+                      <button
+                        onClick={() => kick(m.id)}
+                        title={`Kick ${m.name}`}
+                        aria-label={`Kick ${m.name}`}
+                        className="flex h-5 w-5 items-center justify-center rounded-full text-gray-500 transition-colors hover:bg-red-500/20 hover:text-red-400"
+                      >
+                        <UserX className="h-3 w-3" />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
               {expanded === r.id && (
                 <div className="mt-3 space-y-1 border-t border-white/5 pt-3">
                   {r.recent.length === 0 ? (

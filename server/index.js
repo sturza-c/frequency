@@ -144,6 +144,26 @@ const httpServer = createServer(async (req, res) => {
       return
     }
 
+    // Kick a user: disconnect their socket by client id. They can rejoin
+    // (kick is not a permanent ban — see the dashboard note).
+    if (u.pathname === '/api/admin/kick' && req.method === 'POST') {
+      const clientId = u.searchParams.get('client')
+      let kicked = false
+      for (const client of wss.clients) {
+        if (client.id === clientId) {
+          const room = client.room
+          send(client, { type: 'kicked', text: 'You were removed by a moderator.', ts: Date.now(), id: randomUUID() })
+          if (room) broadcast(room, { type: 'system', text: `${client.name} was removed by a moderator`, ts: Date.now(), id: randomUUID() })
+          try { client.close(4001, 'kicked') } catch { /* already closing */ }
+          kicked = true
+          break
+        }
+      }
+      res.setHeader('Content-Type', 'application/json')
+      res.end(JSON.stringify({ ok: kicked }))
+      return
+    }
+
     // Live stats across every room (public + private).
     if (u.pathname === '/api/admin/stats') {
       const rooms = []
@@ -153,7 +173,7 @@ const httpServer = createServer(async (req, res) => {
           id,
           private: id.startsWith('priv_'),
           count: mem.size,
-          members: [...mem.values()].map((m) => m.name),
+          members: [...mem.entries()].map(([cid, m]) => ({ id: cid, name: m.name })),
           messages: msgs.length,
           lastTs: msgs.length ? msgs[msgs.length - 1].ts : null,
           recent: msgs.slice(-12).map((m) => ({ name: m.name, text: m.text, ts: m.ts, id: m.id })),

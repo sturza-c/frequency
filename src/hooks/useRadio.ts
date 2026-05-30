@@ -81,6 +81,14 @@ export function useRadio() {
               { id: data.id, kind: 'system', text: data.text, ts: data.ts },
             ])
             break
+          case 'kicked':
+            // Stop auto-rejoin on the next (server-initiated) close.
+            roomRef.current = null
+            setMessages((prev) => [
+              ...prev,
+              { id: data.id, kind: 'system', text: data.text, ts: data.ts },
+            ])
+            break
         }
       }
 
