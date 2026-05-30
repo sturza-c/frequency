@@ -1,6 +1,6 @@
 import { useRef, useState, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ArrowRight, Lock, Radio, Square, Timer, Users } from 'lucide-react'
+import { ArrowRight, Lock, Plus, Radio, Square, Timer, Users, X } from 'lucide-react'
 import { ROOMS, type Room as RoomType, type RoomId } from '../lib/rooms'
 import { isHot } from '../lib/hot'
 import type { Account } from '../hooks/useAccount'
@@ -18,9 +18,14 @@ interface LobbyProps {
   account: Account | null
   stats: StudyStats
   isPremium: boolean
+  privateRooms: RoomType[]
+  invite: RoomType | null
   playingRoom: RoomType | null
   nowPlayingTrack: string
   onJoin: (room: RoomId, name: string) => void
+  onJoinRoom: (room: RoomType, name: string) => void
+  onCreateRoom: () => void
+  onDismissInvite: () => void
   onStopMusic: () => void
   onOpenProfile: () => void
   onUpgrade: () => void
@@ -34,9 +39,14 @@ export default function Lobby({
   account,
   stats,
   isPremium,
+  privateRooms,
+  invite,
   playingRoom,
   nowPlayingTrack,
   onJoin,
+  onJoinRoom,
+  onCreateRoom,
+  onDismissInvite,
   onStopMusic,
   onOpenProfile,
   onUpgrade,
@@ -60,8 +70,8 @@ export default function Lobby({
   const totalLive = ROOMS.reduce((sum, r) => sum + (counts[r.id] ?? 0), 0)
   const featured = ROOMS.find((r) => r.id === hovered) ?? ROOMS[0]
 
-  const handleJoin = (room: RoomId, locked: boolean) => {
-    if (locked) { onUpgrade(); return }
+  // Shared name guard: returns the trimmed name, or null after nudging the input.
+  const ensureName = (): string | null => {
     const finalName = (account?.name ?? name).trim()
     if (!finalName) {
       setShake(true)
@@ -69,10 +79,21 @@ export default function Lobby({
       setTimeout(() => setShake(false), 500)
       inputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
       setTimeout(() => inputRef.current?.focus(), 400)
-      return
+      return null
     }
     localStorage.setItem('frequency.name', finalName)
-    onJoin(room, finalName)
+    return finalName
+  }
+
+  const handleJoin = (room: RoomId, locked: boolean) => {
+    if (locked) { onUpgrade(); return }
+    const finalName = ensureName()
+    if (finalName) onJoin(room, finalName)
+  }
+
+  const handleJoinPrivate = (room: RoomType) => {
+    const finalName = ensureName()
+    if (finalName) onJoinRoom(room, finalName)
   }
 
   return (
@@ -323,6 +344,101 @@ export default function Lobby({
           </div>
         )}
 
+        {/* Invite banner — arrived via a private-room link */}
+        <AnimatePresence>
+          {invite && (
+            <motion.div
+              initial={{ opacity: 0, y: -8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              className="mt-16 flex items-center gap-4 rounded-2xl border p-4 md:p-5"
+              style={{ borderColor: `${invite.accent}55`, backgroundColor: `${invite.accent}12` }}
+            >
+              <span className="text-2xl">🔗</span>
+              <div className="min-w-0 flex-1">
+                <p className="text-[11px] uppercase tracking-[0.18em] text-gray-400">You've been invited to</p>
+                <p className="truncate text-lg" style={{ color: '#E1E0CC' }}>{invite.name}</p>
+                <p className="text-xs text-gray-500">{invite.station} · {invite.genre}</p>
+              </div>
+              <button
+                onClick={() => handleJoinPrivate(invite)}
+                className="shrink-0 rounded-full px-5 py-2 text-sm font-semibold transition-opacity hover:opacity-90"
+                style={{ backgroundColor: invite.accent, color: '#101010' }}
+              >
+                Join room
+              </button>
+              <button
+                onClick={onDismissInvite}
+                aria-label="Dismiss invite"
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/5 text-gray-400 hover:bg-white/10"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Private rooms */}
+        <div className="mt-16 flex items-end justify-between">
+          <div>
+            <h2 className="text-2xl tracking-tight md:text-3xl" style={{ color: '#E1E0CC' }}>
+              Your rooms
+            </h2>
+            <p className="mt-1 text-xs text-gray-500">Invite-only spaces you've created or joined.</p>
+          </div>
+          <button
+            onClick={onCreateRoom}
+            className="flex shrink-0 items-center gap-1.5 rounded-full px-4 py-2 text-sm font-medium transition-colors"
+            style={{ backgroundColor: `${featured.accent}22`, color: featured.accent }}
+          >
+            {isPremium ? <Plus className="h-4 w-4" /> : <Lock className="h-3.5 w-3.5" />}
+            Create private room
+          </button>
+        </div>
+        <div className="mt-5">
+          {privateRooms.length === 0 ? (
+            <button
+              onClick={onCreateRoom}
+              className="flex w-full items-center justify-center gap-2 rounded-[1.75rem] border border-dashed border-white/10 py-10 text-sm text-gray-500 transition-colors hover:border-white/20 hover:text-gray-400"
+            >
+              <Plus className="h-4 w-4" />
+              No private rooms yet — create one and share the link
+            </button>
+          ) : (
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {privateRooms.map((room) => (
+                <button
+                  key={room.id}
+                  onClick={() => handleJoinPrivate(room)}
+                  className="group relative overflow-hidden rounded-[1.75rem] border p-6 text-left transition-colors"
+                  style={{ borderColor: `${room.accent}33`, backgroundColor: '#101010' }}
+                >
+                  <div
+                    className="pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full opacity-20 blur-2xl transition-opacity group-hover:opacity-50"
+                    style={{ backgroundColor: room.accent }}
+                  />
+                  <div className="relative">
+                    <span
+                      className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em]"
+                      style={{ backgroundColor: `${room.accent}22`, color: room.accent }}
+                    >
+                      <Lock className="h-2.5 w-2.5" /> Private
+                    </span>
+                    <h3 className="mt-5 truncate text-2xl tracking-tight" style={{ color: '#E1E0CC' }}>
+                      {room.name}
+                    </h3>
+                    <p className="mt-1 text-xs text-gray-500">{room.station} · {room.genre}</p>
+                    <span className="mt-5 inline-flex items-center gap-1.5 text-sm" style={{ color: room.accent }}>
+                      <Timer className="h-3.5 w-3.5" /> Tune in
+                      <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+                    </span>
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
         {/* Tuner / room cards */}
         <div ref={roomsRef} className="mt-16 flex items-end justify-between">
           <h2 className="text-2xl tracking-tight md:text-3xl" style={{ color: '#E1E0CC' }}>
@@ -471,7 +587,7 @@ export default function Lobby({
 
               {/* Back to room */}
               <button
-                onClick={() => onJoin(playingRoom.id, account?.name ?? '')}
+                onClick={() => onJoinRoom(playingRoom, (account?.name ?? name).trim() || 'anon')}
                 className="shrink-0 rounded-full px-4 py-1.5 text-[11px] font-semibold transition-opacity hover:opacity-80"
                 style={{ backgroundColor: playingRoom.accent, color: '#101010' }}
               >

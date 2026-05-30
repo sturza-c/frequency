@@ -1,6 +1,7 @@
 export type RoomId = 'lofi' | 'jazz' | 'study' | 'beats' | 'space' | 'lush'
 
 export interface Room {
+  /** Public rooms use a RoomId; private rooms cast a `priv_…` id to RoomId. */
   id: RoomId
   name: string
   genre: string
@@ -12,9 +13,11 @@ export interface Room {
   accent: string
   /** Premium-only rooms are locked for free users. */
   premium?: boolean
+  /** True for user-created invite-only rooms. */
+  isPrivate?: boolean
 }
 
-const stream = (somaId: string) => `https://ice1.somafm.com/${somaId}-128-mp3`
+export const stream = (somaId: string) => `https://ice1.somafm.com/${somaId}-128-mp3`
 
 // Live internet radio (SomaFM). A live broadcast is the same for every
 // listener, so everyone tuned to a room hears the exact same music in sync.

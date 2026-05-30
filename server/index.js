@@ -33,6 +33,28 @@ const members = new Map(ROOMS.map((r) => [r, new Map()]))
 /** room -> recent chat messages */
 const history = new Map(ROOMS.map((r) => [r, []]))
 
+// Private rooms are created on demand via invite links. Their ids are
+// prefixed `priv_`; we lazily allocate presence/chat maps for them so the
+// invite flow gets real presence + chat without a fixed room list.
+const MAX_PRIVATE_ROOMS = 500
+function resolveRoom(id) {
+  if (typeof id === 'string' && ROOMS.includes(id)) return id
+  if (
+    typeof id === 'string' &&
+    id.startsWith('priv_') &&
+    id.length <= 40 &&
+    /^priv_[a-z0-9]+$/i.test(id)
+  ) {
+    if (!members.has(id)) {
+      if (members.size - ROOMS.length >= MAX_PRIVATE_ROOMS) return 'lofi'
+      members.set(id, new Map())
+      history.set(id, [])
+    }
+    return id
+  }
+  return 'lofi'
+}
+
 // --- HTTP server (now-playing proxy) + WebSocket upgrade on the same port ---
 
 let npCache = { at: 0, data: {} }
@@ -140,7 +162,7 @@ wss.on('connection', (ws) => {
     }
 
     if (msg.type === 'join') {
-      const room = ROOMS.includes(msg.room) ? msg.room : 'lofi'
+      const room = resolveRoom(msg.room)
       const name = String(msg.name || 'anon').trim().slice(0, 24) || 'anon'
       if (ws.room) leave(ws)
       ws.room = room

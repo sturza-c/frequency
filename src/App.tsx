@@ -6,22 +6,25 @@ import { useNowPlaying } from './hooks/useNowPlaying'
 import { useAccount } from './hooks/useAccount'
 import { useStudySessions } from './hooks/useStudySessions'
 import { useSubscription } from './hooks/useSubscription'
-import { ROOM_BY_ID, type RoomId } from './lib/rooms'
+import { usePrivateRooms } from './hooks/usePrivateRooms'
+import { ROOM_BY_ID, type Room as RoomT, type RoomId } from './lib/rooms'
+import { readInvite, clearInviteParam } from './lib/privateRoom'
 import type { SceneId } from './lib/themes'
 import Lobby from './components/Lobby'
 import Room from './components/Room'
 import Profile from './components/Profile'
 import UpgradeModal from './components/UpgradeModal'
+import CreateRoomModal from './components/CreateRoomModal'
 
 interface Theme {
   accent: string
   scene: SceneId
 }
 
-function loadTheme(roomId: RoomId): Theme {
-  const fallback: Theme = { accent: ROOM_BY_ID[roomId].accent, scene: 'glow' }
+function loadTheme(room: RoomT): Theme {
+  const fallback: Theme = { accent: room.accent, scene: 'glow' }
   try {
-    const raw = localStorage.getItem(`frequency.theme.${roomId}`)
+    const raw = localStorage.getItem(`frequency.theme.${room.id}`)
     if (!raw) return fallback
     const parsed = JSON.parse(raw)
     return {
@@ -38,55 +41,71 @@ export default function App() {
   const { account, signIn, signOut } = useAccount()
   const { sessions, addSession, stats } = useStudySessions(account?.name ?? null)
   const { isPremium, upgrade } = useSubscription()
+  const privateRooms = usePrivateRooms()
 
-  const [activeRoom, setActiveRoom] = useState<RoomId | null>(null)
+  const [active, setActive] = useState<RoomT | null>(null)
   const [view, setView] = useState<'lobby' | 'room'>('lobby')
   const [me, setMe] = useState(account?.name ?? '')
   const [theme, setTheme] = useState<Theme>({ accent: ROOM_BY_ID.lofi.accent, scene: 'glow' })
   const [showProfile, setShowProfile] = useState(false)
   const [showUpgrade, setShowUpgrade] = useState(false)
+  const [showCreate, setShowCreate] = useState(false)
+  const [invite, setInvite] = useState<RoomT | null>(null)
 
-  const timer = useStudyTimer(activeRoom !== null)
+  // Resolve an invite link on first load.
+  useEffect(() => {
+    const found = readInvite()
+    if (found) {
+      privateRooms.add(found.config)
+      setInvite(found.room)
+      clearInviteParam()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  const timer = useStudyTimer(active !== null)
   const countdown = useCountdown((totalSec) => {
-    if (!activeRoom) return
-    const r = ROOM_BY_ID[activeRoom]
-    addSession({ durationSec: totalSec, roomId: r.id, station: r.station, mode: 'countdown' })
+    if (!active) return
+    addSession({ durationSec: totalSec, roomId: active.id, station: active.station, mode: 'countdown' })
   })
 
-  const feed = useNowPlaying(activeRoom !== null)
-  const track = activeRoom ? feed[ROOM_BY_ID[activeRoom].somaId]?.track ?? '' : ''
+  const feed = useNowPlaying(active !== null)
+  const track = active ? feed[active.somaId]?.track ?? '' : ''
 
   useEffect(() => {
-    if (activeRoom) setTheme(loadTheme(activeRoom))
-  }, [activeRoom])
+    if (active) setTheme(loadTheme(active))
+  }, [active])
 
   const updateTheme = (mut: (prev: Theme) => Theme) => {
     setTheme((prev) => {
       const next = mut(prev)
-      if (activeRoom) localStorage.setItem(`frequency.theme.${activeRoom}`, JSON.stringify(next))
+      if (active) localStorage.setItem(`frequency.theme.${active.id}`, JSON.stringify(next))
       return next
     })
   }
 
-  const handleJoin = (room: RoomId, name: string) => {
+  const enterRoom = (room: RoomT, name: string) => {
     signIn(name)
     setMe(name)
-    setActiveRoom(room)
+    setActive(room)
     setView('room')
-    join(room, name)
+    join(room.id, name)
   }
 
-  const handleSwitch = (room: RoomId) => {
-    if (room === activeRoom) return
-    setActiveRoom(room)
+  const handleJoin = (roomId: RoomId, name: string) => enterRoom(ROOM_BY_ID[roomId], name)
+  const handleJoinRoom = (room: RoomT, name: string) => enterRoom(room, name)
+
+  const handleSwitch = (roomId: RoomId) => {
+    if (active && roomId === active.id) return
+    const room = ROOM_BY_ID[roomId]
+    setActive(room)
     setView('room')
-    join(room, me)
+    join(room.id, me)
   }
 
   const logStopwatch = () => {
-    if (activeRoom && timer.seconds >= 60) {
-      const r = ROOM_BY_ID[activeRoom]
-      addSession({ durationSec: timer.seconds, roomId: r.id, station: r.station, mode: 'stopwatch' })
+    if (active && timer.seconds >= 60) {
+      addSession({ durationSec: timer.seconds, roomId: active.id, station: active.station, mode: 'stopwatch' })
     }
     timer.reset()
   }
@@ -98,7 +117,7 @@ export default function App() {
   const handleStopMusic = () => {
     logStopwatch()
     leave()
-    setActiveRoom(null)
+    setActive(null)
     setView('lobby')
   }
 
@@ -109,13 +128,18 @@ export default function App() {
     setShowProfile(false)
   }
 
+  const handleCreateClick = () => {
+    if (!isPremium) setShowUpgrade(true)
+    else setShowCreate(true)
+  }
+
   return (
     <main className="bg-black">
-      {/* Room stays mounted while activeRoom is set so audio never stops */}
-      {activeRoom && (
+      {/* Room stays mounted while a room is active so audio never stops */}
+      {active && (
         <div className={view === 'room' ? undefined : 'hidden'}>
           <Room
-            room={ROOM_BY_ID[activeRoom]}
+            room={active}
             me={me}
             messages={messages}
             users={users}
@@ -144,9 +168,14 @@ export default function App() {
           account={account}
           stats={stats}
           isPremium={isPremium}
-          playingRoom={activeRoom ? ROOM_BY_ID[activeRoom] : null}
+          privateRooms={privateRooms.rooms}
+          invite={invite}
+          playingRoom={active}
           nowPlayingTrack={track}
           onJoin={handleJoin}
+          onJoinRoom={handleJoinRoom}
+          onCreateRoom={handleCreateClick}
+          onDismissInvite={() => setInvite(null)}
           onStopMusic={handleStopMusic}
           onOpenProfile={() => setShowProfile(true)}
           onUpgrade={() => setShowUpgrade(true)}
@@ -169,6 +198,13 @@ export default function App() {
         onClose={() => setShowUpgrade(false)}
         onUpgrade={upgrade}
         accent={theme.accent}
+      />
+
+      <CreateRoomModal
+        open={showCreate}
+        onClose={() => setShowCreate(false)}
+        onCreate={privateRooms.add}
+        onEnter={(room) => handleJoinRoom(room, (account?.name ?? me ?? '').trim() || 'anon')}
       />
     </main>
   )

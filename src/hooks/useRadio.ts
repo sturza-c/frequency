@@ -19,7 +19,7 @@ const EMPTY_COUNTS: Counts = Object.fromEntries(ROOMS.map((r) => [r.id, 0])) as 
 
 export function useRadio() {
   const wsRef = useRef<WebSocket | null>(null)
-  const roomRef = useRef<RoomId | null>(null)
+  const roomRef = useRef<string | null>(null)
   const nameRef = useRef<string>('anon')
 
   const [connected, setConnected] = useState(false)
@@ -99,7 +99,7 @@ export function useRadio() {
     }
   }, [])
 
-  const join = useCallback((room: RoomId, name: string) => {
+  const join = useCallback((room: string, name: string) => {
     roomRef.current = room
     nameRef.current = name || 'anon'
     setMessages([])
