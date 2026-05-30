@@ -366,16 +366,16 @@ wss.on('connection', (ws) => {
 
       const text = sanitizeChat(raw)
       if (!text) {
-        send(ws, { type: ‘system’, text: ‘Links and @handles are not allowed here.’, ts: now, id: randomUUID() })
+        send(ws, { type: 'system', text: 'Links and @handles are not allowed here.', ts: now, id: randomUUID() })
         return
       }
       // Block chat during focus phase (allow only during break or idle).
       const pom = roomPom.get(ws.room)
-      if (pom?.phase === ‘focus’) {
-        send(ws, { type: ‘system’, text: ‘🔇 Chat is locked during focus. Use the break to catch up!’, ts: now, id: randomUUID() })
+      if (pom?.phase === 'focus') {
+        send(ws, { type: 'system', text: '🔇 Chat is locked during focus. Use the break to catch up!', ts: now, id: randomUUID() })
         return
       }
-      const m = { type: ‘chat’, name: ws.name, text, ts: now, id: randomUUID() }
+      const m = { type: 'chat', name: ws.name, text, ts: now, id: randomUUID() }
       const arr = history.get(ws.room)
       arr.push(m)
       if (arr.length > HISTORY_LIMIT) arr.shift()
