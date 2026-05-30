@@ -63,6 +63,54 @@ const RATE_MAX = 6
 const START = Date.now()
 const ADMIN_TOKEN = process.env.ADMIN_TOKEN || 'frequency-admin'
 
+// --- Virtual seats ----------------------------------------------------------
+// Eight evocative spots per room. Each user gets the lowest available seat.
+const SEAT_NAMES = [
+  '🪟 Window seat', '☕ Coffee corner', '📖 Reading nook', '🕯️ Candlelit desk',
+  '🌿 Garden side', '🎹 Music alcove', '💡 Centre table', '🚪 Entrance desk',
+]
+function assignSeat(room) {
+  const taken = new Set([...members.get(room)?.values() ?? []].map((m) => m.seat).filter(Boolean))
+  return SEAT_NAMES.find((s) => !taken.has(s)) ?? '📚 Extra chair'
+}
+function seatMap(room) {
+  const m = members.get(room)
+  if (!m) return []
+  return [...m.values()].map((u) => ({ name: u.name, seat: u.seat }))
+}
+
+// --- Synchronized Pomodoro --------------------------------------------------
+// Server-side timer so every client in the room sees the exact same countdown.
+// Phase transitions happen automatically without any client intervention.
+const roomPom = new Map()
+// shape: { phase: 'focus'|'break', startedAt, focusSec, breakSec, round, startedBy }
+
+function pomSnapshot(room) {
+  const s = roomPom.get(room)
+  if (!s) return { type: 'pomodoro_state', phase: 'idle', room }
+  const duration = s.phase === 'focus' ? s.focusSec : s.breakSec
+  const remaining = Math.max(0, duration - Math.floor((Date.now() - s.startedAt) / 1000))
+  return { type: 'pomodoro_state', phase: s.phase, remaining, duration, round: s.round, startedBy: s.startedBy, room }
+}
+
+// Tick every 4 s — auto-transition focus→break→focus.
+setInterval(() => {
+  for (const [room, s] of roomPom) {
+    if (!members.has(room) || members.get(room).size === 0) { roomPom.delete(room); continue }
+    const elapsed = Math.floor((Date.now() - s.startedAt) / 1000)
+    const duration = s.phase === 'focus' ? s.focusSec : s.breakSec
+    if (elapsed < duration) continue
+    if (s.phase === 'focus') {
+      s.phase = 'break'; s.startedAt = Date.now(); s.round++
+      broadcast(room, { type: 'system', text: `🌿 Break time — ${s.breakSec / 60} min. Round ${s.round} done.`, ts: Date.now(), id: randomUUID() })
+    } else {
+      s.phase = 'focus'; s.startedAt = Date.now()
+      broadcast(room, { type: 'system', text: `🍅 Focus — round ${s.round + 1} starting. Lock in.`, ts: Date.now(), id: randomUUID() })
+    }
+    broadcast(room, pomSnapshot(room))
+  }
+}, 4000)
+
 /** room -> Map<clientId, { name }> */
 const members = new Map(ROOMS.map((r) => [r, new Map()]))
 /** room -> recent chat messages */
@@ -250,6 +298,8 @@ function leave(ws) {
   const room = ws.room
   members.get(room).delete(ws.id)
   ws.room = null
+  ws.seat = null
+  broadcast(room, { type: 'seat_map', seats: seatMap(room) })
   broadcast(room, { type: 'presence', users: names(room), count: members.get(room).size })
   broadcast(room, { type: 'system', text: `${ws.name} left the room`, ts: Date.now(), id: randomUUID() })
   broadcastCounts()
@@ -277,11 +327,28 @@ wss.on('connection', (ws) => {
       if (ws.room) leave(ws)
       ws.room = room
       ws.name = name
-      members.get(room).set(ws.id, { name })
+      const seat = assignSeat(room)
+      ws.seat = seat
+      members.get(room).set(ws.id, { name, seat })
       send(ws, { type: 'history', messages: history.get(room) })
+      send(ws, { type: 'seat_assigned', seat })
+      send(ws, pomSnapshot(room)) // send current Pomodoro state to new arrival
+      broadcast(room, { type: 'seat_map', seats: seatMap(room) })
       broadcast(room, { type: 'presence', users: names(room), count: members.get(room).size })
-      broadcast(room, { type: 'system', text: `${name} tuned in`, ts: Date.now(), id: randomUUID() })
+      broadcast(room, { type: 'system', text: `${name} sat down at ${seat}`, ts: Date.now(), id: randomUUID() })
       broadcastCounts()
+    } else if (msg.type === 'pomodoro_start' && ws.room) {
+      const focusSec = Math.min(Math.max(Number(msg.focusSec) || 1500, 60), 7200)
+      const breakSec = Math.min(Math.max(Number(msg.breakSec) || 300, 60), 3600)
+      const prev = roomPom.get(ws.room)
+      const round = prev ? prev.round : 1
+      roomPom.set(ws.room, { phase: 'focus', startedAt: Date.now(), focusSec, breakSec, round, startedBy: ws.name })
+      broadcast(ws.room, { type: 'system', text: `🍅 ${ws.name} started a ${focusSec / 60}-min focus session. Chat locked until break.`, ts: Date.now(), id: randomUUID() })
+      broadcast(ws.room, pomSnapshot(ws.room))
+    } else if (msg.type === 'pomodoro_stop' && ws.room) {
+      roomPom.delete(ws.room)
+      broadcast(ws.room, { type: 'system', text: `${ws.name} ended the room session.`, ts: Date.now(), id: randomUUID() })
+      broadcast(ws.room, { type: 'pomodoro_state', phase: 'idle', room: ws.room })
     } else if (msg.type === 'leave') {
       leave(ws)
     } else if (msg.type === 'chat' && ws.room) {
@@ -299,10 +366,16 @@ wss.on('connection', (ws) => {
 
       const text = sanitizeChat(raw)
       if (!text) {
-        send(ws, { type: 'system', text: 'Links and @handles aren’t allowed here.', ts: now, id: randomUUID() })
+        send(ws, { type: ‘system’, text: ‘Links and @handles are not allowed here.’, ts: now, id: randomUUID() })
         return
       }
-      const m = { type: 'chat', name: ws.name, text, ts: now, id: randomUUID() }
+      // Block chat during focus phase (allow only during break or idle).
+      const pom = roomPom.get(ws.room)
+      if (pom?.phase === ‘focus’) {
+        send(ws, { type: ‘system’, text: ‘🔇 Chat is locked during focus. Use the break to catch up!’, ts: now, id: randomUUID() })
+        return
+      }
+      const m = { type: ‘chat’, name: ws.name, text, ts: now, id: randomUUID() }
       const arr = history.get(ws.room)
       arr.push(m)
       if (arr.length > HISTORY_LIMIT) arr.shift()

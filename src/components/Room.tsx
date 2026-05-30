@@ -1,22 +1,30 @@
 import { useEffect, useRef, useState } from 'react'
 import { motion } from 'framer-motion'
-import { ChevronLeft, MessageSquare, PanelRightClose, User } from 'lucide-react'
+import { ChevronLeft, Focus, MessageSquare, PanelRightClose, User } from 'lucide-react'
 import type { Room as RoomType, RoomId } from '../lib/rooms'
-import type { ChatMessage } from '../hooks/useRadio'
+import type { ChatMessage, SeatEntry } from '../hooks/useRadio'
 import type { StudyTimer as StudyTimerType } from '../hooks/useStudyTimer'
 import type { Countdown } from '../hooks/useCountdown'
+import type { SyncedPomState } from '../hooks/useSyncedPomodoro'
 import type { SceneId } from '../lib/themes'
 import Player from './Player'
 import Chat from './Chat'
 import SceneBackground from './SceneBackground'
 import RoomSwitcher from './RoomSwitcher'
 import Customizer from './Customizer'
+import SeatMap from './SeatMap'
+import SyncedPomodoro from './SyncedPomodoro'
+import FocusMode from './FocusMode'
+import PhaseOverlay from './PhaseOverlay'
 
 interface RoomProps {
   room: RoomType
   me: string
   messages: ChatMessage[]
   users: string[]
+  seatMap: SeatEntry[]
+  mySeat: string
+  pomState: SyncedPomState
   counts: Record<RoomId, number>
   accent: string
   scene: SceneId
@@ -31,31 +39,31 @@ interface RoomProps {
   onScene: (scene: SceneId) => void
   onOpenProfile: () => void
   onUpgrade: () => void
+  onStartPom: (focusMin: number, breakMin: number) => void
+  onStopPom: () => void
 }
 
 const MIN_CHAT = 300
 const MAX_CHAT = 620
 
 export default function Room({
-  room,
-  me,
-  messages,
-  users,
-  counts,
-  accent,
-  scene,
-  timer,
-  countdown,
-  track,
-  isPremium,
-  onSend,
-  onLeave,
-  onSwitch,
-  onAccent,
-  onScene,
-  onOpenProfile,
-  onUpgrade,
+  room, me, messages, users, seatMap, mySeat, pomState, counts, accent, scene,
+  timer, countdown, track, isPremium,
+  onSend, onLeave, onSwitch, onAccent, onScene, onOpenProfile, onUpgrade,
+  onStartPom, onStopPom,
 }: RoomProps) {
+  const [focusModeOpen, setFocusModeOpen] = useState(false)
+
+  // F key toggles focus mode (when not in an input).
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement)?.tagName
+      if (tag === 'INPUT' || tag === 'TEXTAREA') return
+      if (e.key === 'f' || e.key === 'F') setFocusModeOpen((v) => !v)
+    }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [])
   const [chatOpen, setChatOpen] = useState(
     () => localStorage.getItem('frequency.chatOpen') !== 'false',
   )
@@ -119,6 +127,15 @@ export default function Room({
 
           <div className="ml-auto flex shrink-0 items-center gap-2">
             <Customizer accent={accent} scene={scene} onAccent={onAccent} onScene={onScene} />
+            {/* Focus mode toggle */}
+            <button
+              onClick={() => setFocusModeOpen(true)}
+              aria-label="Focus mode (F)"
+              title="Focus mode (F)"
+              className="flex h-9 w-9 items-center justify-center rounded-full bg-white/5 text-gray-300 transition-colors hover:bg-white/10"
+            >
+              <Focus className="h-4 w-4" />
+            </button>
             <button
               onClick={() => setChatOpen((o) => !o)}
               aria-label={chatOpen ? 'Hide chat' : 'Show chat'}
@@ -146,7 +163,7 @@ export default function Room({
         </div>
 
         <div ref={containerRef} className="flex flex-col gap-4 lg:flex-row lg:items-start">
-          <div className="min-w-0 flex-1">
+          <div className="min-w-0 flex-1 space-y-4">
             <Player
               room={room}
               listeners={users.length}
@@ -157,6 +174,15 @@ export default function Room({
               isPremium={isPremium}
               onUpgrade={onUpgrade}
               onLeave={onLeave}
+            />
+            {/* Seat map */}
+            <SeatMap seats={seatMap} mySeat={mySeat} accent={accent} />
+            {/* Synced room Pomodoro */}
+            <SyncedPomodoro
+              state={pomState}
+              accent={accent}
+              onStart={onStartPom}
+              onStop={onStopPom}
             />
           </div>
 
@@ -184,6 +210,20 @@ export default function Room({
           )}
         </div>
       </div>
+
+      {/* Focus mode overlay */}
+      <FocusMode
+        open={focusModeOpen}
+        onClose={() => setFocusModeOpen(false)}
+        roomName={room.name}
+        track={track}
+        accent={accent}
+        pomState={pomState}
+        personalRemaining={countdown.remaining}
+      />
+
+      {/* Cinematic phase-change overlay */}
+      <PhaseOverlay phase={pomState.phase} round={pomState.round} accent={accent} />
     </div>
   )
 }

@@ -37,7 +37,7 @@ function loadTheme(room: RoomT): Theme {
 }
 
 export default function App() {
-  const { connected, counts, messages, users, join, leave, sendChat } = useRadio()
+  const { connected, counts, messages, users, mySeat, seatMap, pomState, join, leave, sendChat, startRoomPom, stopRoomPom } = useRadio()
   const { account, signIn, signOut } = useAccount()
   const { sessions, addSession, stats } = useStudySessions(account?.name ?? null)
   const { isPremium, upgrade } = useSubscription()
@@ -143,6 +143,9 @@ export default function App() {
             me={me}
             messages={messages}
             users={users}
+            seatMap={seatMap}
+            mySeat={mySeat}
+            pomState={pomState}
             counts={counts}
             accent={theme.accent}
             scene={theme.scene}
@@ -157,6 +160,8 @@ export default function App() {
             onScene={(scene) => updateTheme((prev) => ({ ...prev, scene }))}
             onOpenProfile={() => setShowProfile(true)}
             onUpgrade={() => setShowUpgrade(true)}
+            onStartPom={startRoomPom}
+            onStopPom={stopRoomPom}
           />
         </div>
       )}
