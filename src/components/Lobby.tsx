@@ -580,7 +580,7 @@ export default function Lobby({
             {/* Thin accent line at top */}
             <div className="absolute inset-x-0 top-0 h-px" style={{ backgroundColor: playingRoom.accent, opacity: 0.4 }} />
 
-            <div className="mx-auto flex max-w-6xl items-center gap-4 px-5 py-3 md:px-10">
+            <div className="mx-auto flex max-w-6xl items-center gap-4 px-5 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] md:px-10">
               {/* Live dot */}
               <span className="relative flex h-2 w-2 shrink-0">
                 <span className="absolute inline-flex h-full w-full animate-ping rounded-full opacity-60"

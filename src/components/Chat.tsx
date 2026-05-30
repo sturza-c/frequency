@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { Send, Users } from 'lucide-react'
+import { Heart, Send, Users } from 'lucide-react'
 import type { ChatMessage } from '../hooks/useRadio'
 
 interface ChatProps {
@@ -44,6 +44,14 @@ export default function Chat({ messages, users, me, accent, onSend }: ChatProps)
           <Users className="h-3.5 w-3.5" />
           {users.length}
         </div>
+      </div>
+
+      {/* Respect notice */}
+      <div className="flex items-center gap-2 border-b border-white/5 bg-white/[0.02] px-6 py-2.5">
+        <Heart className="h-3 w-3 shrink-0 text-gray-500" />
+        <p className="text-[11px] leading-snug text-gray-500">
+          Be kind — everyone's here to focus. No links, no @handles, no harassment.
+        </p>
       </div>
 
       {/* Presence row */}

@@ -38,8 +38,21 @@ const BANNED = [
   'pute', 'bite', 'couille', 'pédé', 'pede', 'nique', 'niquer', 'batard', 'bâtard',
 ]
 const BANNED_RE = new RegExp(`\\b(${BANNED.join('|')})\\b`, 'gi')
-function cleanText(text) {
-  return text.replace(BANNED_RE, (w) => w[0] + '*'.repeat(Math.max(1, w.length - 1)))
+
+// Links (http/https, www., or bare domain.tld) and social handles (@user) are
+// stripped — keeps the chat on-topic and blocks self-promo / off-platform DMs.
+const URL_RE = /\b(?:https?:\/\/|www\.)\S+|\b[a-z0-9-]+\.(?:com|net|org|io|co|gg|me|ly|app|xyz|fr|be|ch|uk|de|es|it|tv|link|site|store|info|biz)\b\S*/gi
+const HANDLE_RE = /(^|[^a-z0-9_])@[a-z0-9._]{2,}/gi
+
+/** Returns the moderated text (empty string if nothing meaningful remains). */
+function sanitizeChat(text) {
+  let out = text
+    .replace(URL_RE, '[link removed]')
+    .replace(HANDLE_RE, '$1[handle removed]')
+    .replace(BANNED_RE, (w) => w[0] + '*'.repeat(Math.max(1, w.length - 1)))
+  // Collapse a message that is now only removal markers / whitespace.
+  const stripped = out.replace(/\[(?:link|handle) removed\]/g, '').trim()
+  return stripped ? out.trim() : ''
 }
 
 // Per-connection rate limit: max RATE_MAX messages per RATE_WINDOW ms.
@@ -264,7 +277,11 @@ wss.on('connection', (ws) => {
       }
       ws.msgTimes.push(now)
 
-      const text = cleanText(raw)
+      const text = sanitizeChat(raw)
+      if (!text) {
+        send(ws, { type: 'system', text: 'Links and @handles aren’t allowed here.', ts: now, id: randomUUID() })
+        return
+      }
       const m = { type: 'chat', name: ws.name, text, ts: now, id: randomUUID() }
       const arr = history.get(ws.room)
       arr.push(m)
