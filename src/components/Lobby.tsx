@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { ArrowRight, Lock, Plus, Radio, Square, Timer, Trash2, Users, X } from 'lucide-react'
 import { ROOMS, type Room as RoomType, type RoomId } from '../lib/rooms'
 import { isHot } from '../lib/hot'
+import { visiblePublicRooms } from '../lib/stationConfig'
 import type { Account } from '../hooks/useAccount'
 import type { StudyStats } from '../hooks/useStudySessions'
 import { formatDuration } from '../hooks/useStudyTimer'
@@ -71,6 +72,7 @@ export default function Lobby({
 
   const totalLive = ROOMS.reduce((sum, r) => sum + (counts[r.id] ?? 0), 0)
   const featured = ROOMS.find((r) => r.id === hovered) ?? ROOMS[0]
+  const publicRooms = visiblePublicRooms()
 
   // Shared name guard: returns the trimmed name, or null after nudging the input.
   const ensureName = (): string | null => {
@@ -465,7 +467,7 @@ export default function Lobby({
           </span>
         </div>
         <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {ROOMS.map((room, i) => {
+          {publicRooms.map((room, i) => {
             const locked = !!room.premium && !isPremium
             return (
             <motion.button

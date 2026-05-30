@@ -28,6 +28,28 @@ const PORT = Number(process.env.PORT ?? process.env.WS_PORT ?? 8080)
 const ROOMS = ['lofi', 'jazz', 'study', 'beats', 'space', 'lush']
 const HISTORY_LIMIT = 50
 
+// --- Chat moderation ---------------------------------------------------------
+// Mask common profanity (EN + FR). Word-boundary, case-insensitive. This keeps
+// the chat clean without dropping the whole message.
+const BANNED = [
+  'fuck', 'shit', 'bitch', 'asshole', 'cunt', 'dick', 'pussy', 'bastard',
+  'nigger', 'nigga', 'faggot', 'retard', 'whore', 'slut',
+  'merde', 'putain', 'connard', 'connasse', 'salope', 'enculé', 'encule',
+  'pute', 'bite', 'couille', 'pédé', 'pede', 'nique', 'niquer', 'batard', 'bâtard',
+]
+const BANNED_RE = new RegExp(`\\b(${BANNED.join('|')})\\b`, 'gi')
+function cleanText(text) {
+  return text.replace(BANNED_RE, (w) => w[0] + '*'.repeat(Math.max(1, w.length - 1)))
+}
+
+// Per-connection rate limit: max RATE_MAX messages per RATE_WINDOW ms.
+const RATE_WINDOW = 10_000
+const RATE_MAX = 6
+
+// --- Admin ------------------------------------------------------------------
+const START = Date.now()
+const ADMIN_TOKEN = process.env.ADMIN_TOKEN || 'frequency-admin'
+
 /** room -> Map<clientId, { name }> */
 const members = new Map(ROOMS.map((r) => [r, new Map()]))
 /** room -> recent chat messages */
@@ -84,6 +106,60 @@ const httpServer = createServer(async (req, res) => {
     const data = await nowPlaying()
     res.setHeader('Content-Type', 'application/json')
     res.end(JSON.stringify(data))
+    return
+  }
+
+  // --- Admin API (token-gated) ---
+  if (req.url && req.url.startsWith('/api/admin')) {
+    const u = new URL(req.url, 'http://localhost')
+    if (u.searchParams.get('token') !== ADMIN_TOKEN) {
+      res.statusCode = 401
+      res.setHeader('Content-Type', 'application/json')
+      res.end(JSON.stringify({ error: 'unauthorized' }))
+      return
+    }
+
+    // Clear a room's chat history.
+    if (u.pathname === '/api/admin/clear' && req.method === 'POST') {
+      const room = u.searchParams.get('room')
+      if (room && history.has(room)) {
+        history.set(room, [])
+        broadcast(room, { type: 'system', text: 'Chat cleared by a moderator.', ts: Date.now(), id: randomUUID() })
+      }
+      res.setHeader('Content-Type', 'application/json')
+      res.end(JSON.stringify({ ok: true }))
+      return
+    }
+
+    // Live stats across every room (public + private).
+    if (u.pathname === '/api/admin/stats') {
+      const rooms = []
+      for (const [id, mem] of members) {
+        const msgs = history.get(id) || []
+        rooms.push({
+          id,
+          private: id.startsWith('priv_'),
+          count: mem.size,
+          members: [...mem.values()].map((m) => m.name),
+          messages: msgs.length,
+          lastTs: msgs.length ? msgs[msgs.length - 1].ts : null,
+          recent: msgs.slice(-12).map((m) => ({ name: m.name, text: m.text, ts: m.ts, id: m.id })),
+        })
+      }
+      res.setHeader('Content-Type', 'application/json')
+      res.end(JSON.stringify({
+        rooms,
+        totalConnections: wss.clients.size,
+        privateCount: rooms.filter((r) => r.private).length,
+        uptimeSec: Math.floor((Date.now() - START) / 1000),
+        now: Date.now(),
+      }))
+      return
+    }
+
+    res.statusCode = 404
+    res.setHeader('Content-Type', 'application/json')
+    res.end(JSON.stringify({ error: 'not found' }))
     return
   }
   // Serve the Vite production build (static files + SPA fallback).
@@ -150,6 +226,7 @@ wss.on('connection', (ws) => {
   ws.id = randomUUID()
   ws.room = null
   ws.name = 'anon'
+  ws.msgTimes = []
 
   send(ws, { type: 'welcome', counts: counts() })
 
@@ -175,9 +252,20 @@ wss.on('connection', (ws) => {
     } else if (msg.type === 'leave') {
       leave(ws)
     } else if (msg.type === 'chat' && ws.room) {
-      const text = String(msg.text || '').trim().slice(0, 500)
-      if (!text) return
-      const m = { type: 'chat', name: ws.name, text, ts: Date.now(), id: randomUUID() }
+      const raw = String(msg.text || '').trim().slice(0, 500)
+      if (!raw) return
+
+      // Rate limit: drop + privately warn if firing too fast.
+      const now = Date.now()
+      ws.msgTimes = ws.msgTimes.filter((t) => now - t < RATE_WINDOW)
+      if (ws.msgTimes.length >= RATE_MAX) {
+        send(ws, { type: 'system', text: 'Slow down a moment — too many messages.', ts: now, id: randomUUID() })
+        return
+      }
+      ws.msgTimes.push(now)
+
+      const text = cleanText(raw)
+      const m = { type: 'chat', name: ws.name, text, ts: now, id: randomUUID() }
       const arr = history.get(ws.room)
       arr.push(m)
       if (arr.length > HISTORY_LIMIT) arr.shift()
