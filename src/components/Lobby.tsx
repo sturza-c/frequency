@@ -2,6 +2,7 @@ import { useRef, useState, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ArrowRight, Lock, Radio, Square, Timer, Users } from 'lucide-react'
 import { ROOMS, type Room as RoomType, type RoomId } from '../lib/rooms'
+import { isHot } from '../lib/hot'
 import type { Account } from '../hooks/useAccount'
 import type { StudyStats } from '../hooks/useStudySessions'
 import { formatDuration } from '../hooks/useStudyTimer'
@@ -376,6 +377,15 @@ export default function Lobby({
                     >
                       <Lock className="h-2.5 w-2.5" /> Pro
                     </span>
+                  ) : isHot(counts[room.id] ?? 0) ? (
+                    <motion.span
+                      className="flex items-center gap-1 text-[11px] font-medium"
+                      style={{ color: room.accent }}
+                      animate={{ scale: [1, 1.15, 1] }}
+                      transition={{ duration: 1.8, repeat: Infinity, ease: 'easeInOut' }}
+                    >
+                      🔥 {counts[room.id]} live
+                    </motion.span>
                   ) : (
                     <span className="flex items-center gap-1.5 text-[11px] text-gray-500">
                       <span className="relative flex h-1.5 w-1.5">

@@ -1,9 +1,10 @@
-import { useEffect, useRef, useState } from 'react'
-import { motion } from 'framer-motion'
-import { Pause, Play, Volume1, Volume2, VolumeX } from 'lucide-react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { Keyboard, Pause, Play, Volume1, Volume2, VolumeX } from 'lucide-react'
 import type { Room } from '../lib/rooms'
 import type { StudyTimer as StudyTimerType } from '../hooks/useStudyTimer'
 import type { Countdown } from '../hooks/useCountdown'
+import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts'
 import Visualizer from './Visualizer'
 import Turntable from './Turntable'
 import FocusTimer from './FocusTimer'
@@ -18,14 +19,17 @@ interface PlayerProps {
   track: string
   isPremium: boolean
   onUpgrade: () => void
+  onLeave: () => void
 }
 
-export default function Player({ room, listeners, accent, timer, countdown, track, isPremium, onUpgrade }: PlayerProps) {
+export default function Player({ room, listeners, accent, timer, countdown, track, isPremium, onUpgrade, onLeave }: PlayerProps) {
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const [playing, setPlaying] = useState(false)
   const [loading, setLoading] = useState(false)
   const [volume, setVolume] = useState(0.7)
+  const [muted, setMuted] = useState(false)
   const [error, setError] = useState(false)
+  const [showShortcuts, setShowShortcuts] = useState(false)
 
   useEffect(() => {
     const audio = audioRef.current
@@ -43,7 +47,11 @@ export default function Player({ room, listeners, accent, timer, countdown, trac
     if (audioRef.current) audioRef.current.volume = volume
   }, [volume])
 
-  const toggle = () => {
+  useEffect(() => {
+    if (audioRef.current) audioRef.current.muted = muted
+  }, [muted])
+
+  const toggle = useCallback(() => {
     const audio = audioRef.current
     if (!audio) return
     if (playing) {
@@ -57,9 +65,21 @@ export default function Player({ room, listeners, accent, timer, countdown, trac
         .catch(() => setError(true))
         .finally(() => setLoading(false))
     }
-  }
+  }, [playing])
 
-  const VolumeIcon = volume === 0 ? VolumeX : volume < 0.5 ? Volume1 : Volume2
+  const toggleMute = useCallback(() => setMuted((m) => !m), [])
+  const volUp = useCallback(() => setVolume((v) => Math.min(1, Math.round((v + 0.1) * 10) / 10)), [])
+  const volDown = useCallback(() => setVolume((v) => Math.max(0, Math.round((v - 0.1) * 10) / 10)), [])
+
+  useKeyboardShortcuts({
+    onTogglePlay: toggle,
+    onMute: toggleMute,
+    onVolumeUp: volUp,
+    onVolumeDown: volDown,
+    onLeave,
+  })
+
+  const VolumeIcon = muted || volume === 0 ? VolumeX : volume < 0.5 ? Volume1 : Volume2
 
   return (
     <div className="relative overflow-hidden rounded-[2rem] bg-[#101010] p-6 md:p-8">
@@ -150,18 +170,56 @@ export default function Player({ room, listeners, accent, timer, countdown, trac
           </button>
         </div>
 
-        {/* Right: volume */}
+        {/* Right: volume + shortcuts toggle */}
         <div className="flex w-32 shrink-0 items-center justify-end gap-2">
-          <VolumeIcon className="h-4 w-4 shrink-0 text-gray-500" />
+          <button onClick={toggleMute} aria-label={muted ? 'Unmute' : 'Mute'}>
+            <VolumeIcon className="h-4 w-4 shrink-0 text-gray-500 hover:text-gray-300 transition-colors" />
+          </button>
           <input
             type="range" min={0} max={1} step={0.01} value={volume}
             onChange={(e) => setVolume(Number(e.target.value))}
             aria-label="Volume"
-            className="radio-range h-1 w-20 cursor-pointer appearance-none rounded-full"
+            className="radio-range h-1 w-16 cursor-pointer appearance-none rounded-full"
             style={{ accentColor: accent }}
           />
+          <button
+            onClick={() => setShowShortcuts((s) => !s)}
+            aria-label="Keyboard shortcuts"
+            className="ml-1 text-gray-600 hover:text-gray-400 transition-colors"
+          >
+            <Keyboard className="h-3.5 w-3.5" />
+          </button>
         </div>
       </div>
+
+      {/* Keyboard shortcuts overlay */}
+      <AnimatePresence>
+        {showShortcuts && (
+          <motion.div
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 6 }}
+            transition={{ duration: 0.18 }}
+            className="absolute bottom-full right-0 mb-2 rounded-2xl border border-white/[0.08] bg-[#111] p-4 shadow-2xl"
+            style={{ minWidth: 220 }}
+          >
+            <p className="mb-3 text-[10px] uppercase tracking-[0.2em] text-gray-500">Keyboard shortcuts</p>
+            {[
+              ['Space', 'Play / Pause'],
+              ['M', 'Mute / Unmute'],
+              ['↑ / ↓', 'Volume'],
+              ['Esc', 'Back to lobby'],
+            ].map(([key, label]) => (
+              <div key={key} className="flex items-center justify-between gap-6 py-1">
+                <kbd className="rounded-md border border-white/10 bg-white/5 px-2 py-0.5 font-mono text-[11px] text-gray-300">
+                  {key}
+                </kbd>
+                <span className="text-[11px] text-gray-400">{label}</span>
+              </div>
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {error && (
         <p className="relative mt-3 text-center text-xs text-red-300/80">

@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion'
 import { ROOMS, type RoomId } from '../lib/rooms'
+import { isHot } from '../lib/hot'
 
 interface RoomSwitcherProps {
   activeId: RoomId
@@ -29,15 +30,25 @@ export default function RoomSwitcher({ activeId, counts, accent, onSwitch }: Roo
               />
             )}
             <span className="relative whitespace-nowrap font-medium">{room.name}</span>
-            <span
-              className="relative rounded-full px-1.5 text-[10px] tabular-nums"
-              style={{
-                backgroundColor: active ? 'rgba(0,0,0,0.18)' : 'rgba(255,255,255,0.06)',
-                color: active ? '#101010' : 'rgba(225,224,204,0.55)',
-              }}
-            >
-              {counts[room.id] ?? 0}
-            </span>
+            {isHot(counts[room.id] ?? 0) ? (
+              <motion.span
+                className="relative text-sm leading-none"
+                animate={{ scale: [1, 1.25, 1] }}
+                transition={{ duration: 1.8, repeat: Infinity, ease: 'easeInOut' }}
+              >
+                🔥
+              </motion.span>
+            ) : (
+              <span
+                className="relative rounded-full px-1.5 text-[10px] tabular-nums"
+                style={{
+                  backgroundColor: active ? 'rgba(0,0,0,0.18)' : 'rgba(255,255,255,0.06)',
+                  color: active ? '#101010' : 'rgba(225,224,204,0.55)',
+                }}
+              >
+                {counts[room.id] ?? 0}
+              </span>
+            )}
           </button>
         )
       })}

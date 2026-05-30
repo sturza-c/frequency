@@ -156,6 +156,7 @@ export default function Room({
               track={track}
               isPremium={isPremium}
               onUpgrade={onUpgrade}
+              onLeave={onLeave}
             />
           </div>
 
