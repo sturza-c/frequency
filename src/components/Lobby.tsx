@@ -65,6 +65,7 @@ export default function Lobby({
   const [nameConfirmed, setNameConfirmed] = useState(() => !!(account?.name ?? localStorage.getItem('frequency.name')))
   const [hovered, setHovered] = useState<RoomId>('lofi')
   const [showTooltip, setShowTooltip] = useState(false)
+  const [toast, setToast] = useState<{ id: string; text: string } | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const roomsRef = useRef<HTMLDivElement>(null)
 
@@ -74,6 +75,15 @@ export default function Lobby({
     const t = setTimeout(() => setShowTooltip(true), 1500)
     return () => clearTimeout(t)
   }, [account, nameConfirmed])
+
+  // Show latest activity as a bottom-left toast, auto-dismiss after 4s
+  useEffect(() => {
+    if (activity.length === 0) return
+    const latest = activity[0]
+    setToast({ id: latest.id, text: latest.text })
+    const t = setTimeout(() => setToast(null), 4000)
+    return () => clearTimeout(t)
+  }, [activity[0]?.id]) // eslint-disable-line
 
   const confirmName = useCallback(() => {
     const n = name.trim()
@@ -374,24 +384,7 @@ export default function Lobby({
           />
         </div>
 
-        {/* Live activity feed */}
-        {activity.length > 0 && (
-          <div className="mx-auto mt-16 max-w-3xl">
-            <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
-              {activity.slice(0, 4).map((a) => (
-                <motion.span
-                  key={a.id}
-                  initial={{ opacity: 0, x: -8 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  className="flex items-center gap-1.5 text-[11px] text-gray-600"
-                >
-                  <span className="h-1 w-1 rounded-full bg-gray-700" />
-                  {a.text}
-                </motion.span>
-              ))}
-            </div>
-          </div>
-        )}
+        {/* Activity toasts rendered outside content flow — see fixed overlay below */}
 
         {/* Pro section */}
         {!isPremium && (
@@ -683,6 +676,28 @@ export default function Lobby({
         <footer className="mt-20 border-t border-white/5 py-8 text-center text-[11px] uppercase tracking-[0.2em] text-gray-600">
           Frequency · live study radio · powered by SomaFM
         </footer>
+      </div>
+
+      {/* Activity toast — bottom left, one at a time */}
+      <div className="fixed bottom-6 left-6 z-40">
+        <AnimatePresence>
+          {toast && (
+            <motion.div
+              key={toast.id}
+              initial={{ opacity: 0, y: 12, scale: 0.96 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 8, scale: 0.97 }}
+              transition={{ type: 'spring', damping: 24, stiffness: 280 }}
+              className="flex items-center gap-3 rounded-2xl border border-white/[0.08] bg-[#111]/90 px-4 py-3 shadow-2xl backdrop-blur-xl"
+            >
+              <span
+                className="h-2 w-2 shrink-0 rounded-full"
+                style={{ backgroundColor: featured.accent }}
+              />
+              <span className="text-[13px] text-gray-300">{toast.text}</span>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       {/* Persistent now-playing bar — full width strip at bottom */}
