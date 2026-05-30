@@ -172,6 +172,7 @@ export default function Room({
               countdown={countdown}
               track={track}
               isPremium={isPremium}
+              pomState={pomState}
               onUpgrade={onUpgrade}
               onLeave={onLeave}
             />

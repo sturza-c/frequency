@@ -4,6 +4,7 @@ import { Keyboard, Pause, Play, Volume1, Volume2, VolumeX } from 'lucide-react'
 import type { Room } from '../lib/rooms'
 import type { StudyTimer as StudyTimerType } from '../hooks/useStudyTimer'
 import type { Countdown } from '../hooks/useCountdown'
+import type { SyncedPomState } from '../hooks/useSyncedPomodoro'
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts'
 import Visualizer from './Visualizer'
 import Turntable from './Turntable'
@@ -18,11 +19,12 @@ interface PlayerProps {
   countdown: Countdown
   track: string
   isPremium: boolean
+  pomState: SyncedPomState
   onUpgrade: () => void
   onLeave: () => void
 }
 
-export default function Player({ room, listeners, accent, timer, countdown, track, isPremium, onUpgrade, onLeave }: PlayerProps) {
+export default function Player({ room, listeners, accent, timer, countdown, track, isPremium, pomState, onUpgrade, onLeave }: PlayerProps) {
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const [playing, setPlaying] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -180,7 +182,6 @@ export default function Player({ room, listeners, accent, timer, countdown, trac
             onChange={(e) => setVolume(Number(e.target.value))}
             aria-label="Volume"
             className="radio-range h-1 w-16 cursor-pointer appearance-none rounded-full"
-            style={{ accentColor: accent }}
           />
           <button
             onClick={() => setShowShortcuts((s) => !s)}
@@ -227,10 +228,12 @@ export default function Player({ room, listeners, accent, timer, countdown, trac
         </p>
       )}
 
-      {/* Focus timer */}
-      <div className="relative mt-4">
-        <FocusTimer timer={timer} countdown={countdown} accent={accent} isPremium={isPremium} onUpgrade={onUpgrade} />
-      </div>
+      {/* Personal timer — hidden when a room session is running */}
+      {pomState.phase === 'idle' && (
+        <div className="relative mt-4">
+          <FocusTimer timer={timer} countdown={countdown} accent={accent} isPremium={isPremium} onUpgrade={onUpgrade} />
+        </div>
+      )}
     </div>
   )
 }

@@ -87,18 +87,22 @@ body {
 .radio-range::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
-  height: 14px;
-  width: 14px;
+  height: 10px;
+  width: 10px;
   border-radius: 9999px;
-  background: #e1e0cc;
+  background: rgba(225, 224, 204, 0.7);
   cursor: pointer;
+  transition: background 0.15s;
+}
+.radio-range::-webkit-slider-thumb:hover {
+  background: #e1e0cc;
 }
 .radio-range::-moz-range-thumb {
-  height: 14px;
-  width: 14px;
+  height: 10px;
+  width: 10px;
   border: none;
   border-radius: 9999px;
-  background: #e1e0cc;
+  background: rgba(225, 224, 204, 0.7);
   cursor: pointer;
 }
 
