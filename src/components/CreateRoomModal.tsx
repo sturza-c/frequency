@@ -64,13 +64,13 @@ export default function CreateRoomModal({ open, onClose, onCreate, onEnter }: Cr
             exit={{ opacity: 0 }}
             onClick={close}
           />
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <motion.div
-            className="fixed inset-x-4 top-1/2 z-50 mx-auto max-w-md -translate-y-1/2 rounded-3xl border border-white/[0.08] bg-[#0e0e0e] p-7 sm:inset-x-auto sm:left-1/2 sm:w-[440px] sm:-translate-x-1/2"
-            initial={{ y: 30, opacity: 0 }}
-            animate={{ y: '-50%', opacity: 1 }}
-            exit={{ y: 20, opacity: 0 }}
+            className="relative w-full max-w-md rounded-3xl border border-white/[0.08] bg-[#0e0e0e] p-7 sm:w-[440px]"
+            initial={{ y: 20, opacity: 0, scale: 0.97 }}
+            animate={{ y: 0, opacity: 1, scale: 1 }}
+            exit={{ y: 16, opacity: 0, scale: 0.98 }}
             transition={{ type: 'spring', damping: 28, stiffness: 300 }}
-            style={{ left: '50%' }}
           >
             <button
               onClick={close}
@@ -194,6 +194,7 @@ export default function CreateRoomModal({ open, onClose, onCreate, onEnter }: Cr
               </>
             )}
           </motion.div>
+          </div>
         </>
       )}
     </AnimatePresence>
