@@ -111,18 +111,16 @@ export default function Lobby({
           playsInline
           className="h-full w-full object-cover"
           style={{
-            opacity: 0.72,
-            WebkitMaskImage: 'linear-gradient(to bottom, #000 38%, transparent 85%)',
-            maskImage: 'linear-gradient(to bottom, #000 38%, transparent 85%)',
+            WebkitMaskImage: 'linear-gradient(to bottom, #000 50%, transparent 88%)',
+            maskImage: 'linear-gradient(to bottom, #000 50%, transparent 88%)',
           }}
         >
           <source src={HERO_VIDEO} type="video/mp4" />
         </video>
-        {/* Cinematic scrims: top darkness for legibility + side vignettes */}
-        <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/20 to-transparent" />
-        <div className="absolute inset-0 bg-gradient-to-r from-black/40 via-transparent to-black/40" />
-        {/* Subtle colour grade — push blues, darken midtones */}
-        <div className="absolute inset-0 mix-blend-multiply" style={{ backgroundColor: '#0a0d1a', opacity: 0.35 }} />
+        {/* Light top scrim only — let the video breathe */}
+        <div className="absolute inset-0 bg-gradient-to-b from-black/50 via-transparent to-transparent" />
+        {/* Soft side vignettes to keep focus centered */}
+        <div className="absolute inset-0 bg-gradient-to-r from-black/30 via-transparent to-black/20" />
       </div>
 
       {/* Aurora-blob theme background — rises through the video's fading edge and takes over below */}
