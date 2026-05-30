@@ -1,11 +1,12 @@
-import { useRef, useState, useCallback } from 'react'
+import { useRef, useState, useCallback, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ArrowRight, Lock, Plus, Radio, Square, Timer, Trash2, Users, X } from 'lucide-react'
+import { ArrowRight, Crown, Lock, Plus, Radio, Square, Timer, Trash2, Users, X, Zap } from 'lucide-react'
 import { ROOMS, type Room as RoomType, type RoomId } from '../lib/rooms'
 import { isHot } from '../lib/hot'
 import { visiblePublicRooms } from '../lib/stationConfig'
 import type { Account } from '../hooks/useAccount'
 import type { StudyStats } from '../hooks/useStudySessions'
+import type { ActivityEntry } from '../hooks/useRadio'
 import { formatDuration } from '../hooks/useStudyTimer'
 import { HERO_VIDEO } from '../lib/media'
 import WordsPullUp from './WordsPullUp'
@@ -23,6 +24,8 @@ interface LobbyProps {
   invite: RoomType | null
   playingRoom: RoomType | null
   nowPlayingTrack: string
+  totalStudySec: number
+  activity: ActivityEntry[]
   onJoin: (room: RoomId, name: string) => void
   onJoinRoom: (room: RoomType, name: string) => void
   onCreateRoom: () => void
@@ -45,6 +48,8 @@ export default function Lobby({
   invite,
   playingRoom,
   nowPlayingTrack,
+  totalStudySec,
+  activity,
   onJoin,
   onJoinRoom,
   onCreateRoom,
@@ -59,8 +64,16 @@ export default function Lobby({
   const [nameError, setNameError] = useState(false)
   const [nameConfirmed, setNameConfirmed] = useState(() => !!(account?.name ?? localStorage.getItem('frequency.name')))
   const [hovered, setHovered] = useState<RoomId>('lofi')
+  const [showTooltip, setShowTooltip] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
   const roomsRef = useRef<HTMLDivElement>(null)
+
+  // Show welcome tooltip for brand-new visitors after 1.5s
+  useEffect(() => {
+    if (account || nameConfirmed) return
+    const t = setTimeout(() => setShowTooltip(true), 1500)
+    return () => clearTimeout(t)
+  }, [account, nameConfirmed])
 
   const confirmName = useCallback(() => {
     const n = name.trim()
@@ -221,6 +234,24 @@ export default function Lobby({
               exact same live broadcast. No playlists to manage — just press play and grind.
             </motion.p>
 
+            {/* Global hours counter */}
+            {totalStudySec > 0 && (
+              <motion.div
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: 0.6, ease }}
+                className="mt-5 flex items-center gap-2"
+              >
+                <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: featured.accent }} />
+                <span className="text-[12px] text-gray-500">
+                  <span className="font-mono tabular-nums" style={{ color: featured.accent }}>
+                    {Math.floor(totalStudySec / 3600).toLocaleString()}h
+                  </span>
+                  {' '}studied on Frequency
+                </span>
+              </motion.div>
+            )}
+
             <motion.div
               initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
@@ -262,7 +293,21 @@ export default function Lobby({
                   </button>
                 </div>
               ) : (
-                <div>
+                <div className="relative">
+                  {/* Welcome tooltip for new visitors */}
+                  <AnimatePresence>
+                    {showTooltip && (
+                      <motion.div
+                        initial={{ opacity: 0, y: -6 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -4 }}
+                        className="absolute -top-12 left-0 flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.07] px-3 py-2 backdrop-blur-sm"
+                      >
+                        <span className="text-xs text-gray-300">✦ Commence ici</span>
+                        <span className="text-[10px] text-gray-500">↓</span>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                   <p className="mb-2 text-sm" style={{ color: '#E1E0CC' }}>
                     First, what should we call you?
                   </p>
@@ -270,7 +315,7 @@ export default function Lobby({
                     <motion.input
                       ref={inputRef}
                       value={name}
-                      onChange={(e) => { setName(e.target.value); setNameError(false); setNameConfirmed(false) }}
+                      onChange={(e) => { setName(e.target.value); setNameError(false); setNameConfirmed(false); setShowTooltip(false) }}
                       onKeyDown={(e) => e.key === 'Enter' && confirmName()}
                       maxLength={24}
                       placeholder="your name or alias…"
@@ -328,6 +373,80 @@ export default function Lobby({
             className="text-2xl leading-snug tracking-tight md:text-4xl"
           />
         </div>
+
+        {/* Live activity feed */}
+        {activity.length > 0 && (
+          <div className="mx-auto mt-16 max-w-3xl">
+            <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
+              {activity.slice(0, 4).map((a) => (
+                <motion.span
+                  key={a.id}
+                  initial={{ opacity: 0, x: -8 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  className="flex items-center gap-1.5 text-[11px] text-gray-600"
+                >
+                  <span className="h-1 w-1 rounded-full bg-gray-700" />
+                  {a.text}
+                </motion.span>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Pro section */}
+        {!isPremium && (
+          <div className="mx-auto mt-24 max-w-3xl">
+            <div className="rounded-[2rem] border border-white/[0.07] bg-white/[0.02] p-8 md:p-10">
+              <div className="flex flex-col gap-8 md:flex-row md:items-center">
+                <div className="flex-1">
+                  <div
+                    className="mb-3 inline-flex items-center gap-2 rounded-full px-3 py-1 text-[11px] uppercase tracking-[0.2em]"
+                    style={{ backgroundColor: `${featured.accent}22`, color: featured.accent }}
+                  >
+                    <Crown className="h-3 w-3" /> Frequency Pro
+                  </div>
+                  <h2 className="text-2xl font-semibold tracking-tight md:text-3xl" style={{ color: '#E1E0CC' }}>
+                    Go deeper with Pro
+                  </h2>
+                  <p className="mt-2 text-sm text-gray-400">
+                    Everything you need to build a real study habit.
+                  </p>
+                  <div className="mt-6 grid grid-cols-2 gap-3">
+                    {[
+                      { icon: '🎵', label: '6 live rooms', sub: 'Stardrift, Beat Cellar & Lo-Fi Library' },
+                      { icon: '⏱', label: 'Pomodoro', sub: '25 / 50 / 90 min focus sessions' },
+                      { icon: '📈', label: 'Session history', sub: 'Streaks, weekly stats, all-time' },
+                      { icon: '🔒', label: 'Private rooms', sub: 'Invite-only with shareable link' },
+                    ].map((p) => (
+                      <div key={p.label} className="flex items-start gap-2.5">
+                        <span className="text-base leading-none">{p.icon}</span>
+                        <div>
+                          <p className="text-[13px] font-medium" style={{ color: '#E1E0CC' }}>{p.label}</p>
+                          <p className="text-[11px] text-gray-500">{p.sub}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <div className="shrink-0">
+                  <div className="mb-2 text-center">
+                    <span className="text-3xl font-semibold" style={{ color: '#E1E0CC' }}>$4</span>
+                    <span className="text-sm text-gray-500"> / month</span>
+                  </div>
+                  <button
+                    onClick={onUpgrade}
+                    className="flex w-full items-center justify-center gap-2 rounded-2xl px-8 py-3.5 text-sm font-semibold transition-opacity hover:opacity-90"
+                    style={{ backgroundColor: featured.accent, color: '#101010' }}
+                  >
+                    <Zap className="h-4 w-4" />
+                    Upgrade to Pro
+                  </button>
+                  <p className="mt-2 text-center text-[11px] text-gray-600">Cancel anytime</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Stats strip for returning students */}
         {account && stats.count > 0 && (

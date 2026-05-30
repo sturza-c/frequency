@@ -37,7 +37,7 @@ function loadTheme(room: RoomT): Theme {
 }
 
 export default function App() {
-  const { connected, counts, messages, users, mySeat, seatMap, pomState, join, leave, sendChat, startRoomPom, stopRoomPom } = useRadio()
+  const { connected, counts, messages, users, mySeat, seatMap, pomState, totalStudySec, activity, join, leave, sendChat, startRoomPom, stopRoomPom } = useRadio()
   const { account, signIn, signOut } = useAccount()
   const { sessions, addSession, stats } = useStudySessions(account?.name ?? null)
   const { isPremium, upgrade } = useSubscription()
@@ -177,6 +177,8 @@ export default function App() {
           invite={invite}
           playingRoom={active}
           nowPlayingTrack={track}
+          totalStudySec={totalStudySec}
+          activity={activity}
           onJoin={handleJoin}
           onJoinRoom={handleJoinRoom}
           onCreateRoom={handleCreateClick}

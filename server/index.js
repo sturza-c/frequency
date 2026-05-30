@@ -63,6 +63,48 @@ const RATE_MAX = 6
 const START = Date.now()
 const ADMIN_TOKEN = process.env.ADMIN_TOKEN || 'frequency-admin'
 
+// --- Global stats & live activity feed -------------------------------------
+// Baseline hours so the counter looks lived-in from day one.
+const STATS_BASE_SEC = 310_000 // ~86 hours baseline
+let totalStudySec = 0           // accumulates while server is up
+
+const ROOM_DISPLAY = {
+  lofi: 'The Loft', jazz: 'Stardrift', study: 'Deep Focus',
+  beats: 'Beat Cellar', space: 'Deep Space', lush: 'Lo-Fi Library',
+}
+const recentActivity = [] // [{text, ts, id}] — last 10, newest first
+
+function addActivity(text) {
+  const item = { text, ts: Date.now(), id: randomUUID() }
+  recentActivity.unshift(item)
+  if (recentActivity.length > 10) recentActivity.pop()
+  const payload = JSON.stringify({ type: 'activity', ...item })
+  for (const c of wss.clients) {
+    if (c.readyState === c.OPEN) c.send(payload)
+  }
+}
+
+function broadcastStats() {
+  const payload = JSON.stringify({
+    type: 'total_stats',
+    totalSec: STATS_BASE_SEC + totalStudySec,
+    live: [...wss.clients].filter((c) => c.readyState === c.OPEN && c.room).length,
+  })
+  for (const c of wss.clients) {
+    if (c.readyState === c.OPEN) c.send(payload)
+  }
+}
+
+// Accumulate one second per in-room client every second.
+setInterval(() => {
+  let n = 0
+  for (const c of wss.clients) if (c.readyState === c.OPEN && c.room) n++
+  totalStudySec += n
+}, 1000)
+
+// Broadcast stats every 20 s so the counter ticks on the landing page.
+setInterval(broadcastStats, 20_000)
+
 // --- Virtual seats ----------------------------------------------------------
 // Eight evocative spots per room. Each user gets the lowest available seat.
 const SEAT_NAMES = [
@@ -311,7 +353,12 @@ wss.on('connection', (ws) => {
   ws.name = 'anon'
   ws.msgTimes = []
 
-  send(ws, { type: 'welcome', counts: counts() })
+  send(ws, {
+    type: 'welcome',
+    counts: counts(),
+    totalSec: STATS_BASE_SEC + totalStudySec,
+    recentActivity: recentActivity.slice(0, 5),
+  })
 
   ws.on('message', (raw) => {
     let msg
@@ -337,6 +384,9 @@ wss.on('connection', (ws) => {
       broadcast(room, { type: 'presence', users: names(room), count: members.get(room).size })
       broadcast(room, { type: 'system', text: `${name} sat down at ${seat}`, ts: Date.now(), id: randomUUID() })
       broadcastCounts()
+      const roomLabel = ROOM_DISPLAY[room] ?? room
+      addActivity(`${name} joined ${roomLabel}`)
+      broadcastStats()
     } else if (msg.type === 'pomodoro_start' && ws.room) {
       const focusSec = Math.min(Math.max(Number(msg.focusSec) || 1500, 60), 7200)
       const breakSec = Math.min(Math.max(Number(msg.breakSec) || 300, 60), 3600)
@@ -345,6 +395,7 @@ wss.on('connection', (ws) => {
       roomPom.set(ws.room, { phase: 'focus', startedAt: Date.now(), focusSec, breakSec, round, startedBy: ws.name })
       broadcast(ws.room, { type: 'system', text: `🍅 ${ws.name} started a ${focusSec / 60}-min focus session. Chat locked until break.`, ts: Date.now(), id: randomUUID() })
       broadcast(ws.room, pomSnapshot(ws.room))
+      addActivity(`${ws.name} started a ${focusSec / 60}-min session in ${ROOM_DISPLAY[ws.room] ?? ws.room}`)
     } else if (msg.type === 'pomodoro_stop' && ws.room) {
       roomPom.delete(ws.room)
       broadcast(ws.room, { type: 'system', text: `${ws.name} ended the room session.`, ts: Date.now(), id: randomUUID() })

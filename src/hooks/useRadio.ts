@@ -11,6 +11,7 @@ export interface ChatMessage {
 }
 
 export interface SeatEntry { name: string; seat: string }
+export interface ActivityEntry { id: string; text: string; ts: number }
 
 type Counts = Record<RoomId, number>
 
@@ -34,6 +35,8 @@ export function useRadio() {
   const [mySeat, setMySeat] = useState<string>('')
   const [seatMap, setSeatMap] = useState<SeatEntry[]>([])
   const [pomState, setPomState] = useState<SyncedPomState>(IDLE_POM)
+  const [totalStudySec, setTotalStudySec] = useState(0)
+  const [activity, setActivity] = useState<ActivityEntry[]>([])
   const pomRef = useRef<SyncedPomState>(IDLE_POM)
 
   const applyPom = useCallback((data: any) => {
@@ -76,8 +79,18 @@ export function useRadio() {
         try { data = JSON.parse(ev.data) } catch { return }
         switch (data.type) {
           case 'welcome':
+            setCounts({ ...EMPTY_COUNTS, ...data.counts })
+            if (data.totalSec) setTotalStudySec(data.totalSec)
+            if (data.recentActivity) setActivity(data.recentActivity)
+            break
           case 'counts':
             setCounts({ ...EMPTY_COUNTS, ...data.counts })
+            break
+          case 'total_stats':
+            setTotalStudySec(data.totalSec)
+            break
+          case 'activity':
+            setActivity((prev) => [{ id: data.id, text: data.text, ts: data.ts }, ...prev].slice(0, 10))
             break
           case 'history':
             setMessages((data.messages as any[]).map((m) => ({
@@ -158,5 +171,5 @@ export function useRadio() {
     wsRef.current?.send(JSON.stringify({ type: 'pomodoro_stop' }))
   }, [])
 
-  return { connected, counts, messages, users, mySeat, seatMap, pomState, join, leave, sendChat, startRoomPom, stopRoomPom }
+  return { connected, counts, messages, users, mySeat, seatMap, pomState, totalStudySec, activity, join, leave, sendChat, startRoomPom, stopRoomPom }
 }
