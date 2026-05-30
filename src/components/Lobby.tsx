@@ -425,13 +425,14 @@ export default function Lobby({
                     style={{ backgroundColor: room.accent }}
                   />
 
-                  {/* Delete — appears on hover */}
+                  {/* Delete — always visible, clear hit target */}
                   <button
                     onClick={(e) => { e.stopPropagation(); onDeleteRoom(room.id) }}
                     aria-label={`Delete ${room.name}`}
-                    className="absolute right-4 top-4 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-white/5 text-gray-500 opacity-0 transition-all hover:bg-red-500/15 hover:text-red-400 focus:opacity-100 group-hover:opacity-100"
+                    title="Delete room"
+                    className="absolute right-4 top-4 z-10 flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-white/[0.06] text-gray-300 transition-all hover:border-red-500/40 hover:bg-red-500/20 hover:text-red-300"
                   >
-                    <Trash2 className="h-3.5 w-3.5" />
+                    <Trash2 className="h-4 w-4" />
                   </button>
 
                   <div className="relative">
